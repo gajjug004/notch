@@ -1,22 +1,34 @@
-import { invoke } from "@tauri-apps/api/core";
+import "./styles.css";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { restore } from "./restore";
+import { trackGeometry } from "./geometry";
+import { writeText, flush } from "./store";
 
-let greetInputEl: HTMLInputElement | null;
-let greetMsgEl: HTMLElement | null;
+const appWindow = getCurrentWindow();
 
-async function greet() {
-  if (greetMsgEl && greetInputEl) {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    greetMsgEl.textContent = await invoke("greet", {
-      name: greetInputEl.value,
-    });
-  }
+let textTimer: number | undefined;
+
+function scheduleTextSave(title: string, content: string): void {
+  if (textTimer) clearTimeout(textTimer);
+  textTimer = window.setTimeout(() => writeText(title, content), 400);
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-  greetInputEl = document.querySelector("#greet-input");
-  greetMsgEl = document.querySelector("#greet-msg");
-  document.querySelector("#greet-form")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    greet();
+window.addEventListener("DOMContentLoaded", async () => {
+  await restore();
+  await trackGeometry();
+
+  const titleEl = document.getElementById("title") as HTMLInputElement;
+  const bodyEl = document.getElementById("body") as HTMLDivElement;
+
+  const onEdit = () => scheduleTextSave(titleEl.value, bodyEl.innerText);
+  titleEl.addEventListener("input", onEdit);
+  bodyEl.addEventListener("input", onEdit);
+
+  // Flush pending debounced writes before the window actually closes.
+  await appWindow.onCloseRequested(async () => {
+    if (textTimer) clearTimeout(textTimer);
+    await writeText(titleEl.value, bodyEl.innerText);
+    await flush();
+    // not preventing default: let the close proceed after flush resolves
   });
 });

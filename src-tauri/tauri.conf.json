@@ -13,9 +13,20 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "sticky-timer",
-        "width": 800,
-        "height": 600
+        "label": "main",
+        "title": "Sticky Timer",
+        "width": 260,
+        "height": 260,
+        "minWidth": 160,
+        "minHeight": 120,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "transparent": true,
+        "shadow": false,
+        "skipTaskbar": false,
+        "resizable": true,
+        "focus": true,
+        "visible": true
       }
     ],
     "security": {

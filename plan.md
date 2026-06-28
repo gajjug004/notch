@@ -191,10 +191,10 @@ Tasks:
 
 Done when: installable artifact, autostart works, sound + colors + settings persist.
 
-## Decisions to lock
+## Decisions (LOCKED 2026-06-28)
 
-1. **Timer location** — Rust (reliable, survives window close) vs frontend (simple).
-   Recommendation: **Rust**.
-2. **Recurrence scope** — phase 4 full (weekdays/daily) or one-shot first, recurring later?
-3. **Note ↔ schedule** — schedule auto-creates/shows note when it fires, OR
-   note always visible and schedule only starts the timer?
+1. **Timer location** — **Rust.** Source of truth; survives note window close; no clock drift.
+2. **Recurrence scope** — **one-shot first**, recurring (weekdays/daily) as a ready-but-secondary
+   extension in phase 4.
+3. **Note ↔ schedule** — **note always visible**; schedule only fires notification + starts
+   the timer (does not create/spawn the note).
