@@ -40,7 +40,8 @@ body {
   flex: 0 0 22px;
   display: flex;
   align-items: center;
-  padding: 0 8px;
+  gap: 6px;
+  padding: 0 6px 0 8px;
   background: var(--note-bg-strip);
   cursor: grab; /* hint that this strip moves the window */
 }
@@ -53,6 +54,24 @@ body {
   height: 8px;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.25);
+}
+
+.note__del {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 16px;
+  line-height: 1;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+.note__del:hover {
+  background: rgba(0, 0, 0, 0.12);
+  color: rgba(0, 0, 0, 0.7);
 }
 
 .note__title {

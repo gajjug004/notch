@@ -1,34 +1,82 @@
 import "./styles.css";
+import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { restore } from "./restore";
-import { trackGeometry } from "./geometry";
-import { writeText, flush } from "./store";
+import type { Task } from "./types";
 
 const appWindow = getCurrentWindow();
 
-let textTimer: number | undefined;
+/** The window label IS the task id; query string is the explicit fallback. */
+function resolveTaskId(): string {
+  const fromQuery = new URLSearchParams(window.location.search).get("id");
+  return fromQuery ?? appWindow.label;
+}
 
-function scheduleTextSave(title: string, content: string): void {
-  if (textTimer) clearTimeout(textTimer);
-  textTimer = window.setTimeout(() => writeText(title, content), 400);
+let task: Task;
+let saveTimer: number | undefined;
+
+function scheduleSave(): void {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = window.setTimeout(() => {
+    void invoke("save_task", { task });
+  }, 400);
+}
+
+function applyColor(color: string): void {
+  document.documentElement.style.setProperty("--note-bg", color);
+}
+
+async function captureGeometry(): Promise<void> {
+  const factor = await appWindow.scaleFactor();
+  const pos = (await appWindow.outerPosition()).toLogical(factor);
+  const size = (await appWindow.innerSize()).toLogical(factor);
+  task.window = {
+    x: Math.round(pos.x),
+    y: Math.round(pos.y),
+    w: Math.round(size.width),
+    h: Math.round(size.height),
+  };
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
-  await restore();
-  await trackGeometry();
+  const id = resolveTaskId();
+  task = await invoke<Task>("get_task", { id });
 
   const titleEl = document.getElementById("title") as HTMLInputElement;
   const bodyEl = document.getElementById("body") as HTMLDivElement;
+  const delEl = document.getElementById("delete") as HTMLButtonElement;
 
-  const onEdit = () => scheduleTextSave(titleEl.value, bodyEl.innerText);
+  // Render
+  applyColor(task.color);
+  titleEl.value = task.title;
+  bodyEl.innerText = task.content;
+
+  // Edits → debounced save
+  const onEdit = () => {
+    task.title = titleEl.value;
+    task.content = bodyEl.innerText;
+    scheduleSave();
+  };
   titleEl.addEventListener("input", onEdit);
   bodyEl.addEventListener("input", onEdit);
 
-  // Flush pending debounced writes before the window actually closes.
+  // Move / resize → debounced save (geometry in logical px)
+  const onGeom = async () => {
+    await captureGeometry();
+    scheduleSave();
+  };
+  await appWindow.onMoved(() => void onGeom());
+  await appWindow.onResized(() => void onGeom());
+
+  // Delete this note
+  delEl.addEventListener("click", () => {
+    void invoke("delete_task", { id: task.id });
+  });
+
+  // Flush pending edits before close
   await appWindow.onCloseRequested(async () => {
-    if (textTimer) clearTimeout(textTimer);
-    await writeText(titleEl.value, bodyEl.innerText);
-    await flush();
-    // not preventing default: let the close proceed after flush resolves
+    if (saveTimer) clearTimeout(saveTimer);
+    task.title = titleEl.value;
+    task.content = bodyEl.innerText;
+    await invoke("save_task", { task });
   });
 });

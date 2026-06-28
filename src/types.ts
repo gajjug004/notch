@@ -1,19 +1,16 @@
-export interface NoteColor {
-  bg: string;
-  strip: string;
-  ink: string;
-}
-
-export interface WindowGeom {
-  x: number; // physical px, outer position
+export interface Geometry {
+  x: number;
   y: number;
-  w: number; // physical px, inner size
+  w: number;
   h: number;
 }
 
-export interface NoteData {
+export interface Task {
+  id: string;
   title: string;
-  content: string; // plain text extracted from contenteditable
-  color: NoteColor;
-  window: WindowGeom;
+  content: string;
+  color: string;
+  window: Geometry;
+  timer?: unknown; // Phase 3
+  schedule?: unknown; // Phase 4
 }

@@ -9,9 +9,12 @@
   </head>
   <body>
     <main class="note" id="note">
-      <!-- Drag strip: the ONLY element that moves the window -->
+      <!-- Drag strip: moves the window. Buttons inside still receive clicks. -->
       <div class="note__drag" data-tauri-drag-region>
         <span class="note__dot" aria-hidden="true"></span>
+        <button class="note__del" id="delete" title="Delete note" type="button">
+          ×
+        </button>
       </div>
 
       <input
