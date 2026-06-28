@@ -5,12 +5,23 @@ export interface Geometry {
   h: number;
 }
 
+export type TimerMode = "countdown" | "stopwatch";
+export type TimerState = "idle" | "running" | "paused" | "done";
+
+export interface Timer {
+  mode: TimerMode;
+  duration_secs: number;
+  remaining_secs: number;
+  elapsed_secs: number;
+  state: TimerState;
+}
+
 export interface Task {
   id: string;
   title: string;
   content: string;
   color: string;
   window: Geometry;
-  timer?: unknown; // Phase 3
+  timer: Timer;
   schedule?: unknown; // Phase 4
 }

@@ -1,6 +1,8 @@
 import "./styles.css";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import type { UnlistenFn } from "@tauri-apps/api/event";
+import { initTimer } from "./timer";
 import type { Task } from "./types";
 
 const appWindow = getCurrentWindow();
@@ -49,6 +51,12 @@ window.addEventListener("DOMContentLoaded", async () => {
   applyColor(task.color);
   titleEl.value = task.title;
   bodyEl.innerText = task.content;
+
+  // Timer (Rust-driven). Keep unlisten handles for cleanup on reload.
+  const unlisteners: UnlistenFn[] = await initTimer(task);
+  window.addEventListener("beforeunload", () => {
+    unlisteners.forEach((u) => u());
+  });
 
   // Edits → debounced save
   const onEdit = () => {

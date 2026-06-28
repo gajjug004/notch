@@ -86,6 +86,95 @@ body {
   user-select: text;
 }
 
+.timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px 6px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.timer-display {
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+/* tabular-nums: digits keep constant width so the clock doesn't jitter */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-display.done {
+  color: #e2483d;
+  animation: done-flash 0.6s ease-in-out 3;
+}
+@keyframes done-flash {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.mode-toggle {
+  display: flex;
+  gap: 6px;
+}
+.mode-btn {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 11px;
+  padding: 1px 4px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+.mode-btn.active {
+  font-weight: 700;
+  text-decoration: underline;
+  opacity: 1;
+}
+
+.duration {
+  display: block;
+}
+.duration #dur-input {
+  width: 56px;
+  text-align: center;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 2px;
+  user-select: text;
+}
+/* stopwatch mode has no fixed duration */
+.timer[data-mode="stopwatch"] .duration {
+  display: none;
+}
+
+.timer-controls {
+  display: flex;
+  gap: 6px;
+}
+.timer-controls button {
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.timer-controls button:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.16);
+}
+.timer-controls button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .note__body {
   flex: 1 1 auto;
   outline: none;

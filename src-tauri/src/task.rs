@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::timer::Timer;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Geometry {
     pub x: i32,
@@ -15,7 +17,7 @@ impl Default for Geometry {
             x: 120,
             y: 120,
             w: 260,
-            h: 260,
+            h: 360,
         }
     }
 }
@@ -32,18 +34,30 @@ pub struct Task {
     #[serde(default)]
     pub window: Geometry,
 
-    // ---- Forward-compat for Phases 3 (timer) & 4 (schedule). ----
-    // Present so old store files (without these keys) still deserialize, and
-    // new writes start carrying them. Every field added later MUST be
-    // #[serde(default)].
-    #[serde(default)]
-    pub timer: Option<serde_json::Value>, // becomes a typed Timer in Phase 3
+    // Phase 3: typed timer. `default` covers a missing field; the custom
+    // deserializer also maps a present `null` (written as Option in Phase 2) to
+    // the default, so old store files keep loading.
+    #[serde(default, deserialize_with = "de_timer_or_default")]
+    pub timer: Timer,
+
+    // ---- Forward-compat for Phase 4 (schedule). ----
+    // Every field added later MUST be #[serde(default)].
     #[serde(default)]
     pub schedule: Option<serde_json::Value>, // becomes a typed Schedule in Phase 4
 }
 
 fn default_color() -> String {
     "#fff7b1".to_string() // sticky yellow
+}
+
+/// Map a present `null` (Phase 2 stored `timer` as an Option) or a valid object
+/// to a Timer; anything missing/null falls back to Timer::default().
+fn de_timer_or_default<'de, D>(deserializer: D) -> Result<Timer, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let opt = Option::<Timer>::deserialize(deserializer)?;
+    Ok(opt.unwrap_or_default())
 }
 
 impl Task {
@@ -54,7 +68,7 @@ impl Task {
             content: String::new(),
             color: default_color(),
             window: Geometry::default(),
-            timer: None,
+            timer: Timer::default(),
             schedule: None,
         }
     }
