@@ -54,6 +54,42 @@
         </div>
       </section>
 
+      <button class="sched-fired" id="sched-fired" type="button" hidden>
+        ▶ Scheduled — Start timer
+      </button>
+
+      <section class="schedule" id="schedule">
+        <label class="sched-row">
+          <span>Schedule</span>
+          <select id="sched-kind">
+            <option value="none">Off</option>
+            <option value="once">Once</option>
+            <option value="recurring">Recurring</option>
+          </select>
+        </label>
+
+        <input type="datetime-local" id="sched-at" hidden />
+
+        <div id="sched-recurring" hidden>
+          <input type="time" id="sched-time" />
+          <div class="weekdays">
+            <label><input type="checkbox" data-wd="0" />M</label>
+            <label><input type="checkbox" data-wd="1" />T</label>
+            <label><input type="checkbox" data-wd="2" />W</label>
+            <label><input type="checkbox" data-wd="3" />T</label>
+            <label><input type="checkbox" data-wd="4" />F</label>
+            <label><input type="checkbox" data-wd="5" />S</label>
+            <label><input type="checkbox" data-wd="6" />S</label>
+          </div>
+        </div>
+
+        <label class="sched-row">
+          <input type="checkbox" id="sched-autostart" />
+          <span>Auto-start timer</span>
+        </label>
+        <button id="sched-save" type="button">Set schedule</button>
+      </section>
+
       <div
         class="note__body"
         id="body"

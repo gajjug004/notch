@@ -28,19 +28,22 @@ See [plan.md](plan.md) for the design and [docs/](docs/) for per-phase specs.
 | 1 | One note | ✅ done | `c854397` |
 | 2 | Multi-note + tray | ✅ done | `db5e585` |
 | 3 | Timer | ✅ done | `9800379` |
-| 4 | Schedule + notifications | ⬜ next | — |
-| 5 | Polish (sound/autostart/colors/settings/packaging) | ⬜ todo | — |
+| 4 | Schedule + notifications | ✅ done | (this commit) |
+| 5 | Polish (sound/autostart/colors/settings/packaging) | ⬜ next | — |
 
 Each ✅ phase: `cargo check` + `tsc --noEmit` clean, builds and launches
 without panics. Visual/interaction acceptance left to manual run (headless
 can't verify drag, transparency, tray clicks, timer counting).
 
-## What works now (phases 0–3)
+## What works now (phases 0–4)
 
 - Frameless, transparent, always-on-top sticky-note windows; drag strip.
 - Multi-note: each note its own OS window (label == uuid task id).
 - Rust-owned task state (`Mutex<HashMap<Id,Task>>`) mirrored to `tasks.json`.
 - Tray: New note / Show all / Quit. App stays alive in tray after windows close.
+- Per-note schedule (once + recurring): folded into the tick loop; on fire →
+  desktop notification + bring note front + auto-start timer (or one-click
+  Start button). Boot reconcile honors one-shots overdue ≤5 min, skips stale.
 - Per-note timer: countdown + stopwatch, single Rust tick loop (drift-free),
   Start/Pause/Reset/configure, countdown done → flash + `timer-done` event.
 - Persistence: text, color, geometry, timer numbers survive restart;
@@ -51,18 +54,20 @@ can't verify drag, transparency, tray clicks, timer counting).
 - `task.rs` — `Task` + `Geometry`; null-tolerant `timer` deserialize
 - `state.rs` — `AppState`, `persist()`, `load_into_state()`
 - `window.rs` — `open_task_window()` (idempotent spawn)
-- `commands.rs` — create/delete/list/get/save_task + start/pause/reset/configure_timer
+- `commands.rs` — create/delete/list/get/save_task + start/pause/reset/configure_timer + set_schedule
 - `timer.rs` — `Timer` / `TimerMode` / `TimerState` / `RunAnchor`
-- `tick.rs` — single 1s heartbeat for all timers
+- `schedule.rs` — `Schedule` / `ScheduleKind` + `next_fire_time` / `parse_local` (chrono Local)
+- `tick.rs` — single 1s heartbeat for all timers + schedules; `fire_schedule`, `reconcile_on_boot`
 - `tray.rs` — tray menu
-- `lib.rs` — builder wiring, setup (load → boot-paused → restore windows → tray → tick loop)
+- `lib.rs` — builder wiring, setup (load → boot-paused → restore windows → tray → reconcile → tick loop)
 
 ## Frontend layout (`src/`)
 
 - `main.ts` — per-window bootstrap: resolve id → get_task → render → save on edit/move
 - `timer.ts` — timer UI + listens `timer-tick` / `timer-done`
-- `types.ts` — `Task` / `Timer` mirrors of Rust
-- `styles.css`, `index.html` — sticky-note card + timer section
+- `schedule.ts` — schedule UI + `set_schedule`, notification permission, listens `schedule-fired`
+- `types.ts` — `Task` / `Timer` / `Schedule` mirrors of Rust
+- `styles.css`, `index.html` — sticky-note card + timer + schedule sections
 
 ## Known notes / gotchas
 
@@ -70,9 +75,11 @@ can't verify drag, transparency, tray clicks, timer counting).
 - `-f`/`--force` scaffolders overwrite non-empty dirs (lost plan.md/docs once; restored).
 - Any new `Task` field must carry `#[serde(default)]` to keep old stores loading.
 
-## Next: Phase 4 — Schedule
+## Next: Phase 5 — Polish
 
-- `Schedule` on `Task` (kind once/recurring, RFC3339 `at`, weekdays, auto_start, last_fired)
-- Fold schedule check into the existing 1s tick loop; `next_fire_time` via chrono
-- Fire → `tauri-plugin-notification` + bring note front + auto-start timer (or one-click)
-- One-shot first; recurring re-arm secondary. See [docs/phase4-schedule.md](docs/phase4-schedule.md).
+- Sound alert on timer-done / schedule fire (bundled audio, one-window gated)
+- Autostart on login (`tauri-plugin-autostart`)
+- Note color picker (persist `Task.color`)
+- Settings window (defaults, sound on/off, autostart, global pause)
+- Minimize-to-tray on close; packaging to `.deb` / AppImage
+- See [docs/phase5-polish.md](docs/phase5-polish.md).

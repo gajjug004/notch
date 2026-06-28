@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::schedule::Schedule;
 use crate::timer::Timer;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -16,8 +17,8 @@ impl Default for Geometry {
         Geometry {
             x: 120,
             y: 120,
-            w: 260,
-            h: 360,
+            w: 280,
+            h: 470,
         }
     }
 }
@@ -40,10 +41,9 @@ pub struct Task {
     #[serde(default, deserialize_with = "de_timer_or_default")]
     pub timer: Timer,
 
-    // ---- Forward-compat for Phase 4 (schedule). ----
-    // Every field added later MUST be #[serde(default)].
-    #[serde(default)]
-    pub schedule: Option<serde_json::Value>, // becomes a typed Schedule in Phase 4
+    // Phase 4: typed schedule. Null-tolerant for stores written before it existed.
+    #[serde(default, deserialize_with = "de_schedule_or_default")]
+    pub schedule: Schedule,
 }
 
 fn default_color() -> String {
@@ -60,6 +60,15 @@ where
     Ok(opt.unwrap_or_default())
 }
 
+/// Same null-tolerance for `schedule` (Phase 2 stored it as an Option).
+fn de_schedule_or_default<'de, D>(deserializer: D) -> Result<Schedule, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let opt = Option::<Schedule>::deserialize(deserializer)?;
+    Ok(opt.unwrap_or_default())
+}
+
 impl Task {
     pub fn new() -> Self {
         Task {
@@ -69,7 +78,7 @@ impl Task {
             color: default_color(),
             window: Geometry::default(),
             timer: Timer::default(),
-            schedule: None,
+            schedule: Schedule::default(),
         }
     }
 }

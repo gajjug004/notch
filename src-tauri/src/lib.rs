@@ -1,4 +1,5 @@
 mod commands;
+mod schedule;
 mod state;
 mod task;
 mod tick;
@@ -13,6 +14,7 @@ use timer::TimerState;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .manage(AppState::default())
@@ -56,7 +58,10 @@ pub fn run() {
             // 4) System tray.
             tray::build_tray(&handle)?;
 
-            // 5) Single shared timer heartbeat for all notes.
+            // 5) Reconcile schedules missed while the app was closed.
+            tick::reconcile_on_boot(&handle);
+
+            // 6) Single shared heartbeat for all timers + schedules.
             tick::spawn_tick_loop(handle.clone());
 
             Ok(())
@@ -71,6 +76,7 @@ pub fn run() {
             commands::pause_timer,
             commands::reset_timer,
             commands::configure_timer,
+            commands::set_schedule,
         ])
         // Don't quit when the last note window closes; only the tray Quit exits.
         .build(tauri::generate_context!())

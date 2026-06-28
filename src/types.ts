@@ -16,6 +16,16 @@ export interface Timer {
   state: TimerState;
 }
 
+export type ScheduleKind = "none" | "once" | "recurring";
+
+export interface Schedule {
+  kind: ScheduleKind;
+  at: string | null;
+  weekdays: number[];
+  auto_start: boolean;
+  last_fired?: string | null;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -23,5 +33,5 @@ export interface Task {
   color: string;
   window: Geometry;
   timer: Timer;
-  schedule?: unknown; // Phase 4
+  schedule: Schedule;
 }

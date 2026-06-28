@@ -2,6 +2,7 @@ use std::time::Instant;
 
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
+use crate::schedule::Schedule;
 use crate::state::{persist, AppState};
 use crate::task::Task;
 use crate::timer::{RunAnchor, TimerMode, TimerState};
@@ -62,7 +63,10 @@ pub fn list_tasks<R: Runtime>(app: AppHandle<R>) -> Result<Vec<Task>, String> {
 pub fn get_task<R: Runtime>(app: AppHandle<R>, id: String) -> Result<Task, String> {
     let state = app.state::<AppState>();
     let guard = state.tasks.lock().map_err(|e| e.to_string())?;
-    guard.get(&id).cloned().ok_or_else(|| format!("no task {id}"))
+    guard
+        .get(&id)
+        .cloned()
+        .ok_or_else(|| format!("no task {id}"))
 }
 
 /// Save edits (text/color/geometry) from a window. Whole-task upsert.
@@ -223,5 +227,27 @@ pub fn configure_timer<R: Runtime>(
     }
     persist(&app)?;
     emit_now(&app, &id);
+    Ok(())
+}
+
+// ---- Phase 4: schedule command -------------------------------------------
+
+/// Replace a task's schedule wholesale. Clears the duplicate-fire guard so the
+/// (re)set time can fire.
+#[tauri::command]
+pub fn set_schedule<R: Runtime>(
+    app: AppHandle<R>,
+    id: String,
+    schedule: Schedule,
+) -> Result<(), String> {
+    {
+        let state = app.state::<AppState>();
+        let mut guard = state.tasks.lock().map_err(|e| e.to_string())?;
+        let task = guard.get_mut(&id).ok_or("no such task")?;
+        let mut schedule = schedule;
+        schedule.last_fired = None;
+        task.schedule = schedule;
+    }
+    persist(&app)?;
     Ok(())
 }

@@ -175,6 +175,68 @@ body {
   cursor: default;
 }
 
+.schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 10px 6px;
+  font-size: 11px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+.sched-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sched-row span {
+  flex: 0 0 auto;
+}
+.schedule select,
+.schedule input[type="datetime-local"],
+.schedule input[type="time"] {
+  font-size: 11px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.4);
+  user-select: text;
+}
+.weekdays {
+  display: flex;
+  gap: 2px;
+  margin-top: 2px;
+}
+.weekdays label {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 9px;
+}
+#sched-save {
+  align-self: flex-start;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+#sched-save:hover {
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.sched-fired {
+  margin: 4px 10px 0;
+  border: none;
+  border-radius: 6px;
+  background: #e2483d;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px;
+  cursor: pointer;
+}
+
 .note__body {
   flex: 1 1 auto;
   outline: none;

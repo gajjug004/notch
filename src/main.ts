@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import { initTimer } from "./timer";
+import { initSchedule } from "./schedule";
 import type { Task } from "./types";
 
 const appWindow = getCurrentWindow();
@@ -52,8 +53,11 @@ window.addEventListener("DOMContentLoaded", async () => {
   titleEl.value = task.title;
   bodyEl.innerText = task.content;
 
-  // Timer (Rust-driven). Keep unlisten handles for cleanup on reload.
-  const unlisteners: UnlistenFn[] = await initTimer(task);
+  // Timer + schedule (Rust-driven). Keep unlisten handles for reload cleanup.
+  const unlisteners: UnlistenFn[] = [
+    ...(await initTimer(task)),
+    ...(await initSchedule(task)),
+  ];
   window.addEventListener("beforeunload", () => {
     unlisteners.forEach((u) => u());
   });
