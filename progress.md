@@ -28,12 +28,26 @@ See [plan.md](plan.md) for the design and [docs/](docs/) for per-phase specs.
 | 1 | One note | ✅ done | `c854397` |
 | 2 | Multi-note + tray | ✅ done | `db5e585` |
 | 3 | Timer | ✅ done | `9800379` |
-| 4 | Schedule + notifications | ✅ done | (this commit) |
-| 5 | Polish (sound/autostart/colors/settings/packaging) | ⬜ next | — |
+| 4 | Schedule + notifications | ✅ done | `fd914ce` |
+| 5 | Polish (sound/autostart/colors/settings/packaging) | ✅ done | (this commit) |
+
+**All 5 phases complete.**
 
 Each ✅ phase: `cargo check` + `tsc --noEmit` clean, builds and launches
 without panics. Visual/interaction acceptance left to manual run (headless
 can't verify drag, transparency, tray clicks, timer counting).
+
+## What works now (phases 0–5)
+
+- Sound chime on timer-done + schedule fire (frontend Audio, gated per note,
+  respects soundOn). Bundled `src-tauri/sounds/alert.ogg` via asset protocol.
+- Autostart on login (`tauri-plugin-autostart`), toggled in Settings.
+- Note color palette (7 swatches), persisted per note.
+- Settings window (default countdown, sound, autostart, global pause).
+- Minimize-to-tray: closing a note hides it; only tray Quit exits.
+- Global pause: freezes all running timers, preserved across restart.
+- Packaging: `.deb` builds clean. AppImage config present but its bundler
+  (`linuxdeploy`) needs FUSE — fails in this sandbox, builds on a real host.
 
 ## What works now (phases 0–4)
 
@@ -75,11 +89,17 @@ can't verify drag, transparency, tray clicks, timer counting).
 - `-f`/`--force` scaffolders overwrite non-empty dirs (lost plan.md/docs once; restored).
 - Any new `Task` field must carry `#[serde(default)]` to keep old stores loading.
 
-## Next: Phase 5 — Polish
+## Build
 
-- Sound alert on timer-done / schedule fire (bundled audio, one-window gated)
-- Autostart on login (`tauri-plugin-autostart`)
-- Note color picker (persist `Task.color`)
-- Settings window (defaults, sound on/off, autostart, global pause)
-- Minimize-to-tray on close; packaging to `.deb` / AppImage
-- See [docs/phase5-polish.md](docs/phase5-polish.md).
+```
+WEBKIT_DISABLE_DMABUF_RENDERER=1 npm run tauri build
+```
+→ `src-tauri/target/release/bundle/deb/sticky-timer_0.1.0_amd64.deb`.
+AppImage needs FUSE on the build host (`sudo apt install libfuse2`), else
+run the linuxdeploy step on a machine with FUSE.
+
+## Possible follow-ups (not in original plan)
+
+- App icon (still the Tauri default).
+- Schedule UI polish; per-note sound choice; pause indicator styling.
+- CI to build artifacts on a FUSE-enabled runner.

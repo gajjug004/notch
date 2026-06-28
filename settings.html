@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/settings.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sticky Timer — Settings</title>
+    <script type="module" src="/src/settings.ts" defer></script>
+  </head>
+  <body>
+    <main class="settings">
+      <h1>Settings</h1>
+
+      <label class="row">
+        <span>Default countdown (minutes)</span>
+        <input id="default-mins" type="number" min="1" max="999" value="25" />
+      </label>
+
+      <label class="row">
+        <input id="sound-on" type="checkbox" />
+        <span>Play sound on alert</span>
+      </label>
+
+      <label class="row">
+        <input id="autostart" type="checkbox" />
+        <span>Start on login</span>
+      </label>
+
+      <label class="row">
+        <input id="global-pause" type="checkbox" />
+        <span>Pause all timers</span>
+      </label>
+
+      <p id="status" class="status"></p>
+    </main>
+  </body>
+</html>

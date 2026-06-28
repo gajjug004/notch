@@ -9,8 +9,9 @@ use crate::state::AppState;
 pub fn build_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let new_i = MenuItem::with_id(app, "new", "New note", true, None::<&str>)?;
     let show_i = MenuItem::with_id(app, "show_all", "Show all", true, None::<&str>)?;
+    let prefs_i = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
     let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&new_i, &show_i, &quit_i])?;
+    let menu = Menu::with_items(app, &[&new_i, &show_i, &prefs_i, &quit_i])?;
 
     let _tray = TrayIconBuilder::new()
         .icon(app.default_window_icon().unwrap().clone())
@@ -23,6 +24,9 @@ pub fn build_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             "show_all" => {
                 // Re-open any task whose window was destroyed, and focus all.
                 let _ = show_all(app);
+            }
+            "settings" => {
+                let _ = crate::window::open_settings(app);
             }
             "quit" => {
                 app.exit(0); // bypasses prevent_exit; this is the real quit

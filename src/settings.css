@@ -1,0 +1,38 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #222;
+  background: #fafafa;
+}
+.settings {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.settings h1 {
+  font-size: 16px;
+  margin: 0 0 4px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.row span {
+  flex: 1 1 auto;
+}
+.row input[type="number"] {
+  width: 64px;
+  padding: 2px 4px;
+}
+.status {
+  min-height: 16px;
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #2a8a3e;
+}

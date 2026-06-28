@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
 
 use tauri::{AppHandle, Manager, Runtime};
@@ -13,6 +14,9 @@ pub const STORE_KEY: &str = "tasks"; // single key holding the whole map
 pub struct AppState {
     // Mutex (not async): held only for tiny, synchronous critical sections.
     pub tasks: Mutex<HashMap<String, Task>>,
+    // Global pause: when true the tick loop skips timers + schedules without
+    // touching any task's individual state.
+    pub paused: AtomicBool,
 }
 
 /// Write the entire in-memory map to the store and flush to disk.

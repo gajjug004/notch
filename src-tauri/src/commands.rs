@@ -1,8 +1,10 @@
+use std::sync::atomic::Ordering;
 use std::time::Instant;
 
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 use crate::schedule::Schedule;
+use crate::settings;
 use crate::state::{persist, AppState};
 use crate::task::Task;
 use crate::timer::{RunAnchor, TimerMode, TimerState};
@@ -12,6 +14,11 @@ use crate::window::open_task_window;
 #[tauri::command]
 pub fn create_task<R: Runtime>(app: AppHandle<R>) -> Result<Task, String> {
     let mut task = Task::new();
+
+    // New notes start with the user's configured default countdown length.
+    let default_secs = settings::get_u64(&app, "defaultCountdownSecs", 25 * 60);
+    task.timer.duration_secs = default_secs;
+    task.timer.remaining_secs = default_secs;
 
     // Cascade new windows so they don't stack exactly on top of each other.
     {
@@ -250,4 +257,46 @@ pub fn set_schedule<R: Runtime>(
     }
     persist(&app)?;
     Ok(())
+}
+
+// ---- Phase 5: polish commands --------------------------------------------
+
+/// Persist a note's color (applied live in the frontend via a CSS var).
+#[tauri::command]
+pub fn set_task_color<R: Runtime>(
+    app: AppHandle<R>,
+    id: String,
+    color: String,
+) -> Result<(), String> {
+    {
+        let state = app.state::<AppState>();
+        let mut guard = state.tasks.lock().map_err(|e| e.to_string())?;
+        let task = guard.get_mut(&id).ok_or("no such task")?;
+        task.color = color;
+    }
+    persist(&app)?;
+    Ok(())
+}
+
+/// Open (or focus) the Settings window.
+#[tauri::command]
+pub fn open_settings<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    crate::window::open_settings(&app)
+}
+
+/// Global pause: freeze all running timers without touching their individual state.
+#[tauri::command]
+pub fn pause_all<R: Runtime>(app: AppHandle<R>) {
+    app.state::<AppState>().paused.store(true, Ordering::Relaxed);
+    settings::set_value(&app, "globalPause", true.into());
+    let _ = app.emit("global-pause", true);
+}
+
+#[tauri::command]
+pub fn resume_all<R: Runtime>(app: AppHandle<R>) {
+    app.state::<AppState>()
+        .paused
+        .store(false, Ordering::Relaxed);
+    settings::set_value(&app, "globalPause", false.into());
+    let _ = app.emit("global-pause", false);
 }

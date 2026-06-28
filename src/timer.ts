@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { playAlert } from "./sound";
 import type { Task, TimerMode, TimerState } from "./types";
 
 type TickPayload = {
@@ -96,7 +97,13 @@ export async function initTimer(task: Task): Promise<UnlistenFn[]> {
   const unlistenDone = await listen<{ id: string }>("timer-done", (e) => {
     if (e.payload.id !== id) return;
     el("timer-display").classList.add("done");
+    void playAlert();
   });
 
-  return [unlistenTick, unlistenDone];
+  // Rust emits play-sound to this note when its schedule fires.
+  const unlistenSound = await listen<unknown>("play-sound", () => {
+    void playAlert();
+  });
+
+  return [unlistenTick, unlistenDone, unlistenSound];
 }

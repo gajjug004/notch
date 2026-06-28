@@ -1,3 +1,4 @@
+use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
 use chrono::Local;
@@ -43,6 +44,13 @@ pub fn spawn_tick_loop(app: AppHandle) {
 
         loop {
             ticker.tick().await;
+
+            // Global pause: skip timers + schedules entirely, without mutating
+            // any task's individual state.
+            if app.state::<AppState>().paused.load(Ordering::Relaxed) {
+                continue;
+            }
+
             let now_wall = Local::now();
 
             // ---- critical section: short, std Mutex, NO .await inside ----
@@ -159,6 +167,9 @@ fn fire_schedule(app: &AppHandle, plan: FirePlan) {
         let _ = win.show();
         let _ = win.set_focus();
     }
+
+    // Chime, gated to this single note window (frontend respects the soundOn setting).
+    let _ = app.emit_to(plan.id.as_str(), "play-sound", ());
 
     if plan.auto_start {
         let _ = crate::commands::start_timer(app.clone(), plan.id.clone());

@@ -1,10 +1,41 @@
 import "./styles.css";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import type { UnlistenFn } from "@tauri-apps/api/event";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { initTimer } from "./timer";
 import { initSchedule } from "./schedule";
+import { initSound } from "./sound";
 import type { Task } from "./types";
+
+const PALETTE = [
+  "#fff7b1", // yellow
+  "#ffd2a8", // peach
+  "#ffb3ba", // pink
+  "#b8e6c1", // green
+  "#a8d8ff", // blue
+  "#d9c2ff", // purple
+  "#e6e6e6", // grey
+];
+
+function buildPalette(currentColor: string, onPick: (c: string) => void): void {
+  const wrap = document.getElementById("palette") as HTMLDivElement;
+  for (const c of PALETTE) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "swatch";
+    b.style.background = c;
+    if (c.toLowerCase() === currentColor.toLowerCase())
+      b.classList.add("active");
+    b.addEventListener("click", () => {
+      wrap
+        .querySelectorAll(".swatch")
+        .forEach((s) => s.classList.remove("active"));
+      b.classList.add("active");
+      onPick(c);
+    });
+    wrap.appendChild(b);
+  }
+}
 
 const appWindow = getCurrentWindow();
 
@@ -53,11 +84,27 @@ window.addEventListener("DOMContentLoaded", async () => {
   titleEl.value = task.title;
   bodyEl.innerText = task.content;
 
+  // Color palette → live apply + persist.
+  buildPalette(task.color, (color) => {
+    applyColor(color);
+    void invoke("set_task_color", { id: task.id, color });
+  });
+
+  await initSound();
+
   // Timer + schedule (Rust-driven). Keep unlisten handles for reload cleanup.
   const unlisteners: UnlistenFn[] = [
     ...(await initTimer(task)),
     ...(await initSchedule(task)),
   ];
+
+  // Global pause indicator.
+  unlisteners.push(
+    await listen<boolean>("global-pause", (e) => {
+      document.body.classList.toggle("paused", e.payload);
+    }),
+  );
+
   window.addEventListener("beforeunload", () => {
     unlisteners.forEach((u) => u());
   });

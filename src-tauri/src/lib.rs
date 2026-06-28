@@ -1,5 +1,6 @@
 mod commands;
 mod schedule;
+mod settings;
 mod state;
 mod task;
 mod tick;
@@ -7,9 +8,14 @@ mod timer;
 mod tray;
 mod window;
 
+use std::sync::atomic::Ordering;
+
 use state::{load_into_state, AppState};
 use tauri::Manager;
 use timer::TimerState;
+
+#[cfg(desktop)]
+use tauri_plugin_autostart::MacosLauncher;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -21,8 +27,20 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle().clone();
 
+            // Autostart-on-login plugin (writes ~/.config/autostart/<id>.desktop).
+            #[cfg(desktop)]
+            handle.plugin(tauri_plugin_autostart::init(
+                MacosLauncher::LaunchAgent,
+                Some(vec!["--autostarted"]),
+            ))?;
+
             // 1) Load persisted tasks into memory.
             load_into_state(&handle).map_err(|e| e.to_string())?;
+
+            // Restore global pause from settings (quit-while-paused stays paused).
+            if settings::get_bool(&handle, "globalPause", false) {
+                app.state::<AppState>().paused.store(true, Ordering::Relaxed);
+            }
 
             // 2) Boot timers PAUSED: a monotonic anchor can't survive a restart,
             //    and silently fast-forwarding while the app was closed is wrong.
@@ -77,7 +95,20 @@ pub fn run() {
             commands::reset_timer,
             commands::configure_timer,
             commands::set_schedule,
+            commands::set_task_color,
+            commands::open_settings,
+            commands::pause_all,
+            commands::resume_all,
         ])
+        // Minimize-to-tray: closing a note hides it; settings really closes.
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() != "settings" {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
         // Don't quit when the last note window closes; only the tray Quit exits.
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
