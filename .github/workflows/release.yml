@@ -1,0 +1,55 @@
+name: Release
+
+# Push a tag like `v0.1.0` to trigger a build. The job compiles on a real
+# Ubuntu runner (no FUSE sandbox issue), bundles the .deb + .AppImage, and
+# attaches them to a GitHub Release.
+on:
+  push:
+    tags:
+      - "v*"
+
+# tauri-action needs write access to create the Release + upload assets.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # Build on the OLDEST distro you want to support: the resulting .deb/AppImage
+    # require glibc >= this runner's. 22.04 ships webkit2gtk-4.1 (Tauri v2).
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Notch ${{ github.ref_name }}"
+          releaseBody: "Download the `.deb` (Debian/Ubuntu) or `.AppImage` (portable) below."
+          # Draft so you review before it goes public; flip to false to auto-publish.
+          releaseDraft: true
+          prerelease: false
+          args: --bundles deb,appimage
