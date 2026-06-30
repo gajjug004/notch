@@ -73,8 +73,11 @@ pub fn save_task<R: Runtime>(app: AppHandle<R>, task: Task) -> Result<(), String
         let mut guard = state.tasks.lock().map_err(|e| e.to_string())?;
         let mut task = task;
         if let Some(existing) = guard.get(&task.id) {
-            // The note window owns text/color/geometry; Rust owns the timer.
+            // The detail view owns text/color/geometry; Rust owns the timer and
+            // the schedule (edited via configure_timer / set_schedule). Don't let
+            // a stale save_task payload clobber them.
             task.timer = existing.timer.clone();
+            task.schedule = existing.schedule.clone();
         }
         guard.insert(task.id.clone(), task);
     }
