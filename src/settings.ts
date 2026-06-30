@@ -19,6 +19,17 @@ function flash(msg: string): void {
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
+  // Tab switching: toggle .active on the clicked tab + its matching panel.
+  const tabs = document.querySelectorAll<HTMLButtonElement>(".tab");
+  const panels = document.querySelectorAll<HTMLElement>(".panel");
+  tabs.forEach((tab) =>
+    tab.addEventListener("click", () => {
+      const name = tab.dataset.tab;
+      tabs.forEach((t) => t.classList.toggle("active", t === tab));
+      panels.forEach((p) => p.classList.toggle("active", p.dataset.panel === name));
+    }),
+  );
+
   const store = await load("settings.json");
 
   const minsEl = el<HTMLInputElement>("default-mins");

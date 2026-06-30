@@ -1,22 +1,68 @@
+:root {
+  /* Match the sticky note palette (see styles.css). */
+  --note-bg: #fff7b1; /* classic yellow sticky */
+  --note-bg-strip: #ffe66b; /* slightly darker accent */
+  --note-ink: #2a2a22;
+}
+
 * {
   box-sizing: border-box;
 }
 body {
   margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  color: #222;
-  background: #fafafa;
+  color: var(--note-ink);
+  background: var(--note-bg);
 }
 .settings {
   padding: 16px 18px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 .settings h1 {
-  font-size: 16px;
-  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
 }
+
+/* Tab bar — sticky-note feel: active tab underlined in the strip color. */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+.tab {
+  appearance: none;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 6px 12px;
+  margin-bottom: -1px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+.tab:hover {
+  color: var(--note-ink);
+}
+.tab.active {
+  color: var(--note-ink);
+  font-weight: 700;
+  border-bottom-color: var(--note-bg-strip);
+}
+
+/* Panels: only the active one shows. */
+.panel {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+.panel.active {
+  display: flex;
+}
+
 .row {
   display: flex;
   align-items: center;
@@ -26,37 +72,78 @@ body {
 .row span {
   flex: 1 1 auto;
 }
+.row.stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.row.stacked span {
+  flex: 0 0 auto;
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 12px;
+}
+
+input[type="checkbox"] {
+  accent-color: #c29200;
+}
 .row input[type="number"] {
   width: 64px;
-  padding: 2px 4px;
+  padding: 3px 5px;
+}
+.row input[type="number"],
+.row input[type="text"],
+.row input[type="password"],
+.row input[type="time"] {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.55);
+  color: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 4px 6px;
+  outline: none;
 }
 .row input[type="text"],
-.row input[type="password"] {
+.row input[type="password"],
+.row input[type="time"] {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 3px 6px;
 }
-.section {
-  font-size: 13px;
-  font-weight: 600;
-  margin: 12px 0 0;
-  padding-top: 10px;
-  border-top: 1px solid #e2e2e2;
+.row input:focus {
+  border-color: rgba(0, 0, 0, 0.4);
+  background: rgba(255, 255, 255, 0.8);
 }
+.row.stacked input {
+  width: 100%;
+}
+
 .hint {
   font-size: 11px;
-  line-height: 1.4;
-  color: #777;
+  line-height: 1.45;
+  color: rgba(0, 0, 0, 0.55);
   margin: 0;
 }
+
+/* Primary action — filled with the strip accent, like a sticky tab. */
 button#tg-test {
+  appearance: none;
+  background: var(--note-bg-strip);
+  color: var(--note-ink);
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 7px;
   font-size: 12px;
-  padding: 4px 12px;
+  font-weight: 600;
+  padding: 6px 16px;
   cursor: pointer;
 }
+button#tg-test:hover {
+  background: #ffdf4d;
+}
+
 .status {
   min-height: 16px;
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   font-size: 11px;
-  color: #2a8a3e;
+  font-weight: 600;
+  color: #2e9e54; /* matches the running-timer green */
 }

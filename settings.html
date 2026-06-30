@@ -11,67 +11,74 @@
     <main class="settings">
       <h1>Settings</h1>
 
-      <label class="row">
-        <span>Default countdown (minutes)</span>
-        <input id="default-mins" type="number" min="1" max="999" value="25" />
-      </label>
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="general" role="tab">General</button>
+        <button class="tab" data-tab="telegram" role="tab">Telegram</button>
+      </nav>
 
-      <label class="row">
-        <span>Quick presets (minutes)</span>
-        <input id="preset-mins" type="text" value="15, 30, 60, 180" />
-      </label>
+      <section class="panel active" data-panel="general">
+        <label class="row">
+          <span>Default countdown (minutes)</span>
+          <input id="default-mins" type="number" min="1" max="999" value="25" />
+        </label>
 
-      <label class="row">
-        <span>Tonight at</span>
-        <input id="tonight-time" type="time" value="20:00" />
-      </label>
+        <label class="row">
+          <span>Quick presets (minutes)</span>
+          <input id="preset-mins" type="text" value="15, 30, 60, 180" />
+        </label>
 
-      <label class="row">
-        <span>Tomorrow at</span>
-        <input id="tomorrow-time" type="time" value="10:00" />
-      </label>
+        <label class="row">
+          <span>Tonight at</span>
+          <input id="tonight-time" type="time" value="20:00" />
+        </label>
 
-      <label class="row">
-        <input id="sound-on" type="checkbox" />
-        <span>Play sound on alert</span>
-      </label>
+        <label class="row">
+          <span>Tomorrow at</span>
+          <input id="tomorrow-time" type="time" value="10:00" />
+        </label>
 
-      <label class="row">
-        <input id="autostart" type="checkbox" />
-        <span>Start on login</span>
-      </label>
+        <label class="row">
+          <input id="sound-on" type="checkbox" />
+          <span>Play sound on alert</span>
+        </label>
 
-      <label class="row">
-        <input id="global-pause" type="checkbox" />
-        <span>Pause all timers</span>
-      </label>
+        <label class="row">
+          <input id="autostart" type="checkbox" />
+          <span>Start on login</span>
+        </label>
 
-      <h2 class="section">Telegram alerts</h2>
+        <label class="row">
+          <input id="global-pause" type="checkbox" />
+          <span>Pause all timers</span>
+        </label>
+      </section>
 
-      <label class="row">
-        <input id="tg-enabled" type="checkbox" />
-        <span>Send alerts to Telegram</span>
-      </label>
+      <section class="panel" data-panel="telegram">
+        <label class="row">
+          <input id="tg-enabled" type="checkbox" />
+          <span>Send alerts to Telegram</span>
+        </label>
 
-      <label class="row">
-        <span>Bot token</span>
-        <input id="tg-token" type="password" placeholder="123456:ABC-DEF..." autocomplete="off" />
-      </label>
+        <label class="row stacked">
+          <span>Bot token</span>
+          <input id="tg-token" type="password" placeholder="123456:ABC-DEF..." autocomplete="off" />
+        </label>
 
-      <label class="row">
-        <span>Chat ID</span>
-        <input id="tg-chat" type="text" placeholder="numeric id" autocomplete="off" />
-      </label>
+        <label class="row stacked">
+          <span>Chat ID</span>
+          <input id="tg-chat" type="text" placeholder="numeric id" autocomplete="off" />
+        </label>
 
-      <div class="row">
-        <button id="tg-test" type="button">Send test</button>
-      </div>
+        <div class="row">
+          <button id="tg-test" type="button">Send test</button>
+        </div>
 
-      <p class="hint">
-        Create a bot with <b>@BotFather</b> to get the token. Get your numeric
-        Chat ID from <b>@userinfobot</b> (message it once). Start a chat with your
-        own bot first, or it can't message you.
-      </p>
+        <p class="hint">
+          Create a bot with <b>@BotFather</b> to get the token. Get your numeric
+          Chat ID from <b>@userinfobot</b> (message it once). Start a chat with your
+          own bot first, or it can't message you.
+        </p>
+      </section>
 
       <p id="status" class="status"></p>
     </main>

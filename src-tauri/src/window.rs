@@ -40,7 +40,7 @@ pub fn open_settings<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
     }
     WebviewWindowBuilder::new(app, "settings", WebviewUrl::App("settings.html".into()))
         .title("Sticky Timer — Settings")
-        .inner_size(340.0, 300.0)
+        .inner_size(360.0, 440.0)
         .resizable(false)
         .build()
         .map_err(|e| e.to_string())?;
