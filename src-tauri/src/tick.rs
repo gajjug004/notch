@@ -21,6 +21,7 @@ struct TickPayload {
 #[derive(Clone, serde::Serialize)]
 struct DonePayload {
     id: String,
+    title: String,
 }
 
 /// Built under the lock, consumed after release (side effects must not run under
@@ -84,6 +85,7 @@ pub fn spawn_tick_loop(app: AppHandle) {
                                         t.anchor = None;
                                         dones.push(DonePayload {
                                             id: task.id.clone(),
+                                            title: task.title.clone(),
                                         });
                                     } else {
                                         t.elapsed_secs = spent;
@@ -133,6 +135,18 @@ pub fn spawn_tick_loop(app: AppHandle) {
             }
             for d in &dones {
                 let _ = app.emit("timer-done", d);
+                // Desktop notification when a countdown finishes (mirrors schedules).
+                let title = if d.title.is_empty() {
+                    "Sticky Timer"
+                } else {
+                    d.title.as_str()
+                };
+                let _ = app
+                    .notification()
+                    .builder()
+                    .title(title)
+                    .body("Timer finished.")
+                    .show();
             }
             let fired = !to_fire.is_empty();
             for plan in to_fire {
