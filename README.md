@@ -1,7 +1,102 @@
-# Tauri + Vanilla TS
+<div align="center">
 
-This template should help get you started developing with Tauri in vanilla HTML, CSS and Typescript.
+<img src="src-tauri/icons/128x128.png" width="96" alt="Notch icon" />
 
-## Recommended IDE Setup
+# Notch
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+**Sticky notes for your thoughts — each one a task with a timer and a schedule.**
+
+Capture thoughts. Track time. Get things done.
+
+</div>
+
+<div align="center">
+
+<img src="docs/screenshot.png" width="760" alt="Notch list view and task detail view" />
+
+<sub>List view (live timers + <code>⏰</code> schedule badges) and a task's detail editor.</sub>
+
+</div>
+
+## What it is
+
+Notch is a tiny desktop app: a single frameless, always-on-top sticky-note
+window holding a task list. Every task has its own **countdown/stopwatch timer**
+and an optional **schedule** that fires a desktop notification and auto-starts
+the timer. Click a task to open its full-window detail editor — a hero clock you
+can click to edit, start/pause/reset, and a collapsed schedule popover with quick
+presets.
+
+Built with **Tauri v2** (Rust backend) + vanilla TypeScript (no framework). The
+Rust side owns all state, so timers and schedules keep running accurately even
+when the window is closed and never drift.
+
+## Features
+
+- **One window, list + detail** — a sticky note with a row per task, live timer,
+  and an `⏰` badge for scheduled tasks. Click through to a focused editor.
+- **Per-task timers** — countdown or stopwatch, drift-free (driven by a single
+  1-second heartbeat in Rust, anchored to a monotonic clock).
+- **Schedules** — one-shot or recurring (pick weekdays); quick presets
+  (15m / 30m / 1h / 3h / tonight / tomorrow) or a custom date + time. On fire:
+  notify, raise the window, and optionally auto-start the timer.
+- **Lives in the tray** — closing the window hides it; the app keeps running.
+  Tray menu: New task / Show / Settings / Quit.
+- **Settings** — default countdown length, schedule presets, sound, autostart,
+  and a global pause that freezes every timer.
+- **Telegram alerts** — optional notifications for timers and schedules.
+
+## Install
+
+Grab a build from the [Releases](../../releases) page:
+
+| Platform | Artifact |
+|----------|----------|
+| Debian / Ubuntu | `.deb` |
+| Portable Linux | `.AppImage` |
+| macOS (Apple Silicon + Intel) | `.dmg` (universal) |
+
+The macOS `.dmg` is **unsigned**. On first launch, right-click the app →
+**Open** (or run `xattr -dr com.apple.quarantine /Applications/Notch.app`) to get
+past Gatekeeper.
+
+## Build from source
+
+Requires [Node.js](https://nodejs.org), [Rust](https://rustup.rs), and the Tauri
+v2 system dependencies for your OS.
+
+```bash
+npm install
+
+# Dev (Linux quirks baked in):
+WEBKIT_DISABLE_DMABUF_RENDERER=1 npm run tauri dev
+#   add GDK_BACKEND=x11 if transparent corners render black
+
+# Package for the current platform:
+npm run tauri build
+```
+
+Releases are built in CI: pushing a `v*` tag builds the `.deb` + `.AppImage` on
+Ubuntu and a universal `.dmg` on macOS, then attaches them to a draft GitHub
+Release (see [`.github/workflows/release.yml`](.github/workflows/release.yml)).
+
+## Architecture
+
+**Rust owns all state.** The frontend renders state and sends edits; it never
+holds authoritative timer/schedule values.
+
+- State lives in a `Mutex<HashMap<Id, Task>>`, mirrored to
+  `tasks.json` under the platform data dir
+  (`~/.local/share/com.notch.desktop/` on Linux,
+  `~/Library/Application Support/com.notch.desktop/` on macOS).
+- A single 1-second tick loop drives **all** timers and schedules.
+- One frameless/transparent/always-on-top window swaps between a list view and a
+  detail view — no per-task OS windows. Rust emits events globally; the frontend
+  routes them by task `id`.
+
+See [`CLAUDE.md`](CLAUDE.md) for the full design and module map, plus `plan.md`,
+`progress.md`, and `docs/` for phase specs.
+
+## License
+
+See repository for details.
