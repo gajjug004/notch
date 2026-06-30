@@ -22,7 +22,7 @@ Capture thoughts. Track time. Get things done.
 
 <img src="docs/screenshot.png" width="760" alt="Notch list view and task detail view" />
 
-<sub>List view (live timers + <code>⏰</code> schedule badges) and a task's detail editor.</sub>
+<sub>List view — urgency-sorted, with <code>running</code> / <code>scheduled</code> / <code>finished</code> / <code>done</code> badges — and a task's detail editor with its timer status line.</sub>
 
 </div>
 
@@ -41,18 +41,27 @@ when the window is closed and never drift.
 
 ## Features
 
-- **One window, list + detail** — a sticky note with a row per task, live timer,
-  and an `⏰` badge for scheduled tasks. Click through to a focused editor.
+- **One window, list + detail** — a sticky note with a row per task, sorted by
+  urgency (needs-attention first) with compact `running` / `scheduled` /
+  `finished` / `done` badges. Click through to a focused editor.
 - **Per-task timers** — countdown or stopwatch, drift-free (driven by a single
-  1-second heartbeat in Rust, anchored to a monotonic clock).
+  1-second heartbeat in Rust, anchored to a monotonic clock). The detail view
+  shows a live status line and explicit `start` / `pause` / `reset` / `done`.
+- **Task lifecycle** — mark tasks **done** (hidden by default, revealed with a
+  `Done` toggle) and reopen them; inline confirm guards accidental delete.
 - **Schedules** — one-shot or recurring (pick weekdays); quick presets
   (15m / 30m / 1h / 3h / tonight / tomorrow) or a custom date + time. On fire:
   notify, raise the window, and optionally auto-start the timer.
+- **Alert handling** — when a schedule fires without auto-start, the task offers
+  `start` / `snooze 5m` / `snooze 15m` / `dismiss`; a finished countdown offers
+  `reset` / `start again` / `done`.
 - **Lives in the tray** — closing the window hides it; the app keeps running.
-  Tray menu: New task / Show / Settings / Quit.
+  Tray menu: New task / Show / Settings / Quit. A ⚙ in the title bar opens
+  Settings directly.
 - **Settings** — default countdown length, schedule presets, sound, autostart,
-  and a global pause that freezes every timer.
-- **Telegram alerts** — optional notifications for timers and schedules.
+  and a global pause that freezes every timer (with a persistent banner).
+- **Telegram alerts** — optional, event-specific messages for scheduled, due-now,
+  and timer-finished events.
 
 ## Install
 
