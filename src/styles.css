@@ -517,6 +517,7 @@ body {
 }
 
 .note__hide,
+.note__gear,
 .back-btn {
   border: none;
   background: transparent;
@@ -529,7 +530,12 @@ body {
   cursor: pointer;
   user-select: none;
 }
+.note__gear {
+  font-size: 13px;
+  margin-right: 2px;
+}
 .note__hide:hover,
+.note__gear:hover,
 .back-btn:hover {
   background: rgba(0, 0, 0, 0.12);
   color: rgba(0, 0, 0, 0.7);

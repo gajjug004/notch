@@ -210,6 +210,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     showDone = !showDone;
     void renderList();
   });
+  el("list-settings").addEventListener("click", () => void invoke("open_settings"));
   el("list-hide").addEventListener("click", () => void appWindow.hide());
 
   // Detail view actions.
