@@ -8,6 +8,14 @@
 
 Capture thoughts. Track time. Get things done.
 
+<br />
+
+[![Release](https://github.com/gajjug004/notch/actions/workflows/release.yml/badge.svg)](https://github.com/gajjug004/notch/actions/workflows/release.yml)
+![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS-2e9e54)
+![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%20v2-ffc131?logo=tauri&logoColor=white)
+![Rust](https://img.shields.io/badge/Rust-2a2a22?logo=rust&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178c6?logo=typescript&logoColor=white)
+
 </div>
 
 <div align="center">
