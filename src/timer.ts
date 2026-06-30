@@ -1,19 +1,14 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { playAlert } from "./sound";
 import type { Task, TimerMode, TimerState } from "./types";
 
-type TickPayload = {
+export type TickPayload = {
   id: string;
   remaining_secs: number;
   elapsed_secs: number;
   state: TimerState;
 };
 
-const id = getCurrentWindow().label; // == task id
-
-const fmt = (s: number): string => {
+export const fmt = (s: number): string => {
   const m = Math.floor(s / 60);
   const sec = s % 60;
   return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
@@ -25,22 +20,14 @@ const parse = (mmss: string): number => {
   return parts[0] || 0;
 };
 
-let mode: TimerMode = "countdown";
-
 const el = <T extends HTMLElement>(elId: string): T =>
   document.getElementById(elId) as T;
 
-function render(p: TickPayload): void {
-  const disp = el("timer-display");
-  // Display from Rust ONLY. Countdown shows remaining; stopwatch shows elapsed.
-  disp.textContent =
-    mode === "countdown" ? fmt(p.remaining_secs) : fmt(p.elapsed_secs);
-  disp.classList.toggle("done", p.state === "done");
-
-  const running = p.state === "running";
-  el<HTMLButtonElement>("btn-start").disabled = running;
-  el<HTMLButtonElement>("btn-pause").disabled = !running;
-}
+// The single window's detail view operates on one task at a time.
+let currentId: string | null = null;
+let mode: TimerMode = "countdown";
+let state: TimerState = "idle";
+let editing = false;
 
 function applyModeUi(): void {
   el("timer").setAttribute("data-mode", mode);
@@ -48,37 +35,89 @@ function applyModeUi(): void {
   el("mode-stopwatch").classList.toggle("active", mode === "stopwatch");
 }
 
-export async function initTimer(task: Task): Promise<UnlistenFn[]> {
-  // Initial state from the task Rust handed us.
-  mode = task.timer.mode;
-  el<HTMLInputElement>("dur-input").value = fmt(task.timer.duration_secs);
-  applyModeUi();
-  render({
-    id,
-    remaining_secs: task.timer.remaining_secs,
-    elapsed_secs: task.timer.elapsed_secs,
-    state: task.timer.state,
-  });
+/** Idle countdown is the only state where the clock can be retimed by click. */
+function canEdit(): boolean {
+  return state === "idle" && mode === "countdown";
+}
 
-  el("btn-start").addEventListener("click", () => {
-    void invoke("start_timer", { id });
+/** Push mode + duration to Rust. Used by the mode toggle and clock edit. */
+function applyConfig(): void {
+  if (!currentId) return;
+  const dur = parse(el<HTMLInputElement>("dur-input").value);
+  applyModeUi();
+  void invoke("configure_timer", {
+    id: currentId,
+    mode,
+    durationSecs: mode === "countdown" ? dur : 0,
   });
-  el("btn-pause").addEventListener("click", () => {
-    void invoke("pause_timer", { id });
+}
+
+function openEdit(): void {
+  if (!canEdit()) return;
+  editing = true;
+  const disp = el("timer-display");
+  const input = el<HTMLInputElement>("dur-input");
+  input.value = disp.textContent?.trim() ?? "";
+  disp.hidden = true;
+  input.hidden = false;
+  input.focus();
+  input.select();
+}
+
+function closeEdit(): void {
+  editing = false;
+  el<HTMLInputElement>("dur-input").hidden = true;
+  el("timer-display").hidden = false;
+}
+
+/** Update the detail view's clock + controls from a Rust snapshot. */
+export function renderTimerTick(p: TickPayload): void {
+  state = p.state;
+
+  const disp = el("timer-display");
+  disp.textContent =
+    mode === "countdown" ? fmt(p.remaining_secs) : fmt(p.elapsed_secs);
+  disp.classList.toggle("done", p.state === "done");
+  const editable = canEdit();
+  disp.classList.toggle("editable", editable);
+  // Only hint the click-to-edit when it actually does something.
+  if (editable) disp.title = "Click to set the time";
+  else disp.removeAttribute("title");
+
+  const running = p.state === "running";
+  const toggle = el<HTMLButtonElement>("btn-toggle");
+  toggle.textContent = running ? "pause" : "start";
+  toggle.classList.toggle("running", running);
+  toggle.disabled = p.state === "done";
+}
+
+/** Wire the detail timer controls ONCE. Handlers read the current task id. */
+export function setupTimer(): void {
+  el("btn-toggle").addEventListener("click", () => {
+    if (!currentId) return;
+    void invoke(state === "running" ? "pause_timer" : "start_timer", {
+      id: currentId,
+    });
   });
   el("btn-reset").addEventListener("click", () => {
-    void invoke("reset_timer", { id });
+    if (currentId) void invoke("reset_timer", { id: currentId });
   });
 
-  const applyConfig = () => {
-    const dur = parse(el<HTMLInputElement>("dur-input").value);
-    applyModeUi();
-    void invoke("configure_timer", {
-      id,
-      mode,
-      durationSecs: mode === "countdown" ? dur : 0,
-    });
-  };
+  // Click the clock to retime it (idle countdown only).
+  el("timer-display").addEventListener("click", openEdit);
+
+  const input = el<HTMLInputElement>("dur-input");
+  input.addEventListener("change", () => {
+    applyConfig(); // emit_now from Rust re-renders the display text
+    closeEdit();
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") input.blur();
+    else if (e.key === "Escape") closeEdit();
+  });
+  input.addEventListener("blur", () => {
+    if (editing) closeEdit();
+  });
 
   el("mode-countdown").addEventListener("click", () => {
     mode = "countdown";
@@ -88,22 +127,26 @@ export async function initTimer(task: Task): Promise<UnlistenFn[]> {
     mode = "stopwatch";
     applyConfig();
   });
-  el("dur-input").addEventListener("change", applyConfig);
-
-  const unlistenTick = await listen<TickPayload>("timer-tick", (e) => {
-    if (e.payload.id !== id) return;
-    render(e.payload);
-  });
-  const unlistenDone = await listen<{ id: string }>("timer-done", (e) => {
-    if (e.payload.id !== id) return;
-    el("timer-display").classList.add("done");
-    void playAlert();
-  });
-
-  // Rust emits play-sound to this note when its schedule fires.
-  const unlistenSound = await listen<unknown>("play-sound", () => {
-    void playAlert();
-  });
-
-  return [unlistenTick, unlistenDone, unlistenSound];
 }
+
+/** Point the detail timer at a task and render its current state. */
+export function loadTimer(task: Task): void {
+  currentId = task.id;
+  mode = task.timer.mode;
+  closeEdit();
+  el<HTMLInputElement>("dur-input").value = fmt(task.timer.duration_secs);
+  applyModeUi();
+  renderTimerTick({
+    id: task.id,
+    remaining_secs: task.timer.remaining_secs,
+    elapsed_secs: task.timer.elapsed_secs,
+    state: task.timer.state,
+  });
+}
+
+/** Called when leaving the detail view, so stray ticks are ignored. */
+export function unloadTimer(): void {
+  currentId = null;
+}
+
+export type { TimerMode };

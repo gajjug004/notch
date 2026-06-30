@@ -127,11 +127,12 @@ pub fn spawn_tick_loop(app: AppHandle) {
             } // <-- lock released HERE
 
             // ---- emit + side effects AFTER releasing the lock ----
+            // One window: emit globally; the frontend routes by payload.id.
             for p in &ticks {
-                let _ = app.emit_to(p.id.as_str(), "timer-tick", p);
+                let _ = app.emit("timer-tick", p);
             }
             for d in &dones {
-                let _ = app.emit_to(d.id.as_str(), "timer-done", d);
+                let _ = app.emit("timer-done", d);
             }
             let fired = !to_fire.is_empty();
             for plan in to_fire {
@@ -162,21 +163,22 @@ fn fire_schedule(app: &AppHandle, plan: FirePlan) {
     // Swallow errors: a missing notification daemon must not crash the loop.
     let _ = app.notification().builder().title(title).body(body).show();
 
-    if let Some(win) = app.get_webview_window(&plan.id) {
+    // Bring the single main window to the front.
+    if let Some(win) = app.get_webview_window(crate::window::MAIN_LABEL) {
         let _ = win.unminimize();
         let _ = win.show();
         let _ = win.set_focus();
     }
 
-    // Chime, gated to this single note window (frontend respects the soundOn setting).
-    let _ = app.emit_to(plan.id.as_str(), "play-sound", ());
+    // Chime (frontend respects the soundOn setting).
+    let _ = app.emit("play-sound", ());
 
     if plan.auto_start {
         let _ = crate::commands::start_timer(app.clone(), plan.id.clone());
     } else {
         // Linux notification daemons can't be relied on for action buttons, so
-        // the in-note UI surfaces Start when it receives this event.
-        let _ = app.emit_to(plan.id.as_str(), "schedule-fired", plan.id.clone());
+        // the in-app UI surfaces Start when it receives this event (carries the id).
+        let _ = app.emit("schedule-fired", plan.id.clone());
     }
 }
 

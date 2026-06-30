@@ -1,141 +1,194 @@
 import "./styles.css";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { initTimer } from "./timer";
-import { initSchedule } from "./schedule";
-import { initSound } from "./sound";
-import type { Task } from "./types";
+import { listen } from "@tauri-apps/api/event";
+import {
+  fmt,
+  loadTimer,
+  renderTimerTick,
+  setupTimer,
+  unloadTimer,
+  type TickPayload,
+} from "./timer";
+import {
+  loadSchedule,
+  onScheduleFired,
+  scheduleBadge,
+  setupSchedule,
+  unloadSchedule,
+} from "./schedule";
+import { initSound, playAlert } from "./sound";
+import type { Task, Timer } from "./types";
 
-const PALETTE = [
-  "#fff7b1", // yellow
-  "#ffd2a8", // peach
-  "#ffb3ba", // pink
-  "#b8e6c1", // green
-  "#a8d8ff", // blue
-  "#d9c2ff", // purple
-  "#e6e6e6", // grey
-];
+const appWindow = getCurrentWindow();
+const el = <T extends HTMLElement>(id: string): T =>
+  document.getElementById(id) as T;
 
-function buildPalette(currentColor: string, onPick: (c: string) => void): void {
-  const wrap = document.getElementById("palette") as HTMLDivElement;
-  for (const c of PALETTE) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "swatch";
-    b.style.background = c;
-    if (c.toLowerCase() === currentColor.toLowerCase())
-      b.classList.add("active");
-    b.addEventListener("click", () => {
-      wrap
-        .querySelectorAll(".swatch")
-        .forEach((s) => s.classList.remove("active"));
-      b.classList.add("active");
-      onPick(c);
-    });
-    wrap.appendChild(b);
+// ---- view state -----------------------------------------------------------
+
+/** The task currently open in the detail view, or null when showing the list. */
+let detailTask: Task | null = null;
+/** Live row handles for the list view, keyed by task id. */
+const rows = new Map<
+  string,
+  { time: HTMLElement; root: HTMLElement; mode: Timer["mode"] }
+>();
+let saveTimer: number | undefined;
+
+// ---- list view ------------------------------------------------------------
+
+function timerText(t: Timer): string {
+  return t.mode === "stopwatch" ? fmt(t.elapsed_secs) : fmt(t.remaining_secs);
+}
+
+async function renderList(): Promise<void> {
+  const tasks = await invoke<Task[]>("list_tasks");
+  tasks.sort((a, b) => a.title.localeCompare(b.title));
+
+  const listEl = el("task-list");
+  listEl.replaceChildren();
+  rows.clear();
+
+  el("list-empty").hidden = tasks.length > 0;
+
+  for (const task of tasks) {
+    const root = document.createElement("button");
+    root.type = "button";
+    root.className = "task-row";
+    if (task.timer.state === "running") root.classList.add("running");
+
+    const main = document.createElement("span");
+    main.className = "task-row__main";
+    const title = document.createElement("span");
+    title.className = "task-row__title";
+    title.textContent = task.title || "(untitled)";
+    const sched = document.createElement("span");
+    sched.className = "task-row__sched";
+    sched.textContent = scheduleBadge(task.schedule);
+    main.append(title, sched);
+
+    const time = document.createElement("span");
+    time.className = "task-row__time tabular";
+    time.textContent = timerText(task.timer);
+
+    root.append(main, time);
+    root.addEventListener("click", () => void openDetail(task.id));
+    listEl.appendChild(root);
+    rows.set(task.id, { time, root, mode: task.timer.mode });
   }
 }
 
-const appWindow = getCurrentWindow();
-
-/** The window label IS the task id; query string is the explicit fallback. */
-function resolveTaskId(): string {
-  const fromQuery = new URLSearchParams(window.location.search).get("id");
-  return fromQuery ?? appWindow.label;
+function showList(): void {
+  detailTask = null;
+  unloadTimer();
+  unloadSchedule();
+  el("detail-view").hidden = true;
+  el("list-view").hidden = false;
+  void renderList();
 }
 
-let task: Task;
-let saveTimer: number | undefined;
+// ---- detail view ----------------------------------------------------------
 
 function scheduleSave(): void {
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = window.setTimeout(() => {
-    void invoke("save_task", { task });
+    if (detailTask) void invoke("save_task", { task: detailTask });
   }, 400);
 }
 
-function applyColor(color: string): void {
-  document.documentElement.style.setProperty("--note-bg", color);
+async function openDetail(id: string): Promise<void> {
+  const task = await invoke<Task>("get_task", { id });
+  detailTask = task;
+
+  el<HTMLInputElement>("title").value = task.title;
+  el<HTMLDivElement>("body").innerText = task.content;
+
+  loadTimer(task);
+  loadSchedule(task);
+
+  el("list-view").hidden = true;
+  el("detail-view").hidden = false;
 }
 
-async function captureGeometry(): Promise<void> {
-  const factor = await appWindow.scaleFactor();
-  const pos = (await appWindow.outerPosition()).toLogical(factor);
-  const size = (await appWindow.innerSize()).toLogical(factor);
-  task.window = {
-    x: Math.round(pos.x),
-    y: Math.round(pos.y),
-    w: Math.round(size.width),
-    h: Math.round(size.height),
-  };
+function flushSave(): void {
+  if (!detailTask) return;
+  if (saveTimer) clearTimeout(saveTimer);
+  detailTask.title = el<HTMLInputElement>("title").value;
+  detailTask.content = el<HTMLDivElement>("body").innerText;
+  void invoke("save_task", { task: detailTask });
 }
+
+// ---- wiring (once) --------------------------------------------------------
 
 window.addEventListener("DOMContentLoaded", async () => {
-  const id = resolveTaskId();
-  task = await invoke<Task>("get_task", { id });
+  await initSound();
+  setupTimer();
+  setupSchedule();
 
-  const titleEl = document.getElementById("title") as HTMLInputElement;
-  const bodyEl = document.getElementById("body") as HTMLDivElement;
-  const delEl = document.getElementById("delete") as HTMLButtonElement;
+  // List view actions.
+  el("new-task").addEventListener("click", async () => {
+    const task = await invoke<Task>("create_task");
+    await openDetail(task.id);
+  });
+  el("list-hide").addEventListener("click", () => void appWindow.hide());
 
-  // Render
-  applyColor(task.color);
-  titleEl.value = task.title;
-  bodyEl.innerText = task.content;
-
-  // Color palette → live apply + persist.
-  buildPalette(task.color, (color) => {
-    applyColor(color);
-    void invoke("set_task_color", { id: task.id, color });
+  // Detail view actions.
+  el("back").addEventListener("click", () => {
+    flushSave();
+    showList();
+  });
+  el("detail-hide").addEventListener("click", () => void appWindow.hide());
+  el("delete").addEventListener("click", () => {
+    if (!detailTask) return;
+    void invoke("delete_task", { id: detailTask.id });
+    showList();
   });
 
-  await initSound();
+  const onEdit = () => {
+    if (!detailTask) return;
+    detailTask.title = el<HTMLInputElement>("title").value;
+    detailTask.content = el<HTMLDivElement>("body").innerText;
+    scheduleSave();
+  };
+  el("title").addEventListener("input", onEdit);
+  el("body").addEventListener("input", onEdit);
 
-  // Timer + schedule (Rust-driven). Keep unlisten handles for reload cleanup.
-  const unlisteners: UnlistenFn[] = [
-    ...(await initTimer(task)),
-    ...(await initSchedule(task)),
-  ];
+  // Global events from Rust (single window; route by payload.id).
+  await listen<TickPayload>("timer-tick", (e) => {
+    const p = e.payload;
+    const row = rows.get(p.id);
+    if (row) {
+      row.time.textContent = fmt(
+        row.mode === "stopwatch" ? p.elapsed_secs : p.remaining_secs,
+      );
+      row.root.classList.toggle("running", p.state === "running");
+    }
+    if (detailTask && detailTask.id === p.id) renderTimerTick(p);
+  });
+
+  await listen<{ id: string }>("timer-done", (e) => {
+    void playAlert();
+    const row = rows.get(e.payload.id);
+    if (row) row.root.classList.remove("running");
+  });
+
+  // Schedule fired with no auto-start: chime + surface Start in the open task.
+  await listen<unknown>("play-sound", () => void playAlert());
+  await listen<string>("schedule-fired", (e) => onScheduleFired(e.payload));
+
+  // Task set changed (create/delete/edit) → refresh the list if it's showing.
+  await listen<unknown>("tasks-changed", () => {
+    if (!el("list-view").hidden) void renderList();
+  });
 
   // Global pause indicator.
-  unlisteners.push(
-    await listen<boolean>("global-pause", (e) => {
-      document.body.classList.toggle("paused", e.payload);
-    }),
-  );
-
-  window.addEventListener("beforeunload", () => {
-    unlisteners.forEach((u) => u());
+  await listen<boolean>("global-pause", (e) => {
+    document.body.classList.toggle("paused", e.payload);
   });
 
-  // Edits → debounced save
-  const onEdit = () => {
-    task.title = titleEl.value;
-    task.content = bodyEl.innerText;
-    scheduleSave();
-  };
-  titleEl.addEventListener("input", onEdit);
-  bodyEl.addEventListener("input", onEdit);
+  // Flush a pending edit if the window is hidden/closed mid-edit.
+  await appWindow.onCloseRequested(() => flushSave());
 
-  // Move / resize → debounced save (geometry in logical px)
-  const onGeom = async () => {
-    await captureGeometry();
-    scheduleSave();
-  };
-  await appWindow.onMoved(() => void onGeom());
-  await appWindow.onResized(() => void onGeom());
-
-  // Delete this note
-  delEl.addEventListener("click", () => {
-    void invoke("delete_task", { id: task.id });
-  });
-
-  // Flush pending edits before close
-  await appWindow.onCloseRequested(async () => {
-    if (saveTimer) clearTimeout(saveTimer);
-    task.title = titleEl.value;
-    task.content = bodyEl.innerText;
-    await invoke("save_task", { task });
-  });
+  // Start on the list.
+  showList();
 });

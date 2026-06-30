@@ -8,11 +8,38 @@
     <script type="module" src="/src/main.ts" defer></script>
   </head>
   <body>
-    <main class="note" id="note">
-      <!-- Drag strip: moves the window. Buttons inside still receive clicks. -->
+    <!-- ===================== LIST VIEW ===================== -->
+    <main class="view" id="list-view">
       <div class="note__drag" data-tauri-drag-region>
         <span class="note__dot" aria-hidden="true"></span>
-        <button class="note__del" id="delete" title="Delete note" type="button">
+        <span class="strip-title" data-tauri-drag-region>Sticky Timer</span>
+        <button class="note__hide" id="list-hide" title="Hide to tray" type="button">
+          ×
+        </button>
+      </div>
+
+      <div class="list-head">
+        <button class="new-btn" id="new-task" type="button">+ New task</button>
+      </div>
+
+      <div class="task-list" id="task-list"></div>
+
+      <p class="list-empty" id="list-empty" hidden>
+        No tasks yet. Tap <strong>+ New task</strong> to create one.
+      </p>
+    </main>
+
+    <!-- ===================== DETAIL VIEW ===================== -->
+    <main class="view note" id="detail-view" hidden>
+      <div class="note__drag" data-tauri-drag-region>
+        <button class="back-btn" id="back" title="Back to list" type="button">
+          ←
+        </button>
+        <span class="strip-fill" data-tauri-drag-region></span>
+        <button class="note__del" id="delete" title="Delete task" type="button">
+          🗑
+        </button>
+        <button class="note__hide" id="detail-hide" title="Hide to tray" type="button">
           ×
         </button>
       </div>
@@ -25,34 +52,39 @@
         spellcheck="false"
       />
 
-      <div class="palette" id="palette" aria-label="Note color"></div>
-
       <section class="timer" id="timer">
-        <div id="timer-display" class="timer-display tabular">25:00</div>
-
-        <div class="mode-toggle">
-          <button id="mode-countdown" class="mode-btn active" type="button">
-            Countdown
+        <div class="clock">
+          <button
+            id="timer-display"
+            class="timer-display tabular"
+            type="button"
+          >
+            25:00
           </button>
-          <button id="mode-stopwatch" class="mode-btn" type="button">
-            Stopwatch
-          </button>
-        </div>
-
-        <label class="duration" id="duration">
           <input
             id="dur-input"
+            class="dur-input tabular"
             type="text"
             inputmode="numeric"
             value="25:00"
             pattern="[0-9]{1,3}:[0-5][0-9]"
+            hidden
           />
-        </label>
+        </div>
+
+        <div class="mode-toggle">
+          <button id="mode-countdown" class="mode-btn active" type="button">
+            countdown
+          </button>
+          <span class="mode-sep" aria-hidden="true">·</span>
+          <button id="mode-stopwatch" class="mode-btn" type="button">
+            stopwatch
+          </button>
+        </div>
 
         <div class="timer-controls">
-          <button id="btn-start" type="button">Start</button>
-          <button id="btn-pause" type="button" disabled>Pause</button>
-          <button id="btn-reset" type="button">Reset</button>
+          <button id="btn-toggle" type="button">start</button>
+          <button id="btn-reset" type="button">reset</button>
         </div>
       </section>
 
@@ -60,37 +92,62 @@
         ▶ Scheduled — Start timer
       </button>
 
-      <section class="schedule" id="schedule">
-        <label class="sched-row">
-          <span>Schedule</span>
-          <select id="sched-kind">
-            <option value="none">Off</option>
-            <option value="once">Once</option>
-            <option value="recurring">Recurring</option>
-          </select>
-        </label>
+      <div class="sched-bar" id="sched-bar">
+        <button class="sched-trigger" id="sched-trigger" type="button">
+          <span class="sched-summary" id="sched-summary">Schedule</span>
+          <span class="sched-chev" id="sched-chev" aria-hidden="true">›</span>
+        </button>
 
-        <input type="datetime-local" id="sched-at" hidden />
+        <div class="sched-pop" id="sched-pop" hidden>
+          <label class="sched-row">
+            <span>Repeat</span>
+            <select id="sched-kind">
+              <option value="none">Off</option>
+              <option value="once">Once</option>
+              <option value="recurring">Recurring</option>
+            </select>
+          </label>
 
-        <div id="sched-recurring" hidden>
-          <input type="time" id="sched-time" />
-          <div class="weekdays">
-            <label><input type="checkbox" data-wd="0" />M</label>
-            <label><input type="checkbox" data-wd="1" />T</label>
-            <label><input type="checkbox" data-wd="2" />W</label>
-            <label><input type="checkbox" data-wd="3" />T</label>
-            <label><input type="checkbox" data-wd="4" />F</label>
-            <label><input type="checkbox" data-wd="5" />S</label>
-            <label><input type="checkbox" data-wd="6" />S</label>
+          <div id="sched-once" hidden>
+            <div class="presets">
+              <button type="button" data-min="15">15m</button>
+              <button type="button" data-min="30">30m</button>
+              <button type="button" data-min="60">1h</button>
+              <button type="button" data-min="180">3h</button>
+              <button type="button" data-preset="tonight">tonight</button>
+              <button type="button" data-preset="tmrw9">tmrw 9a</button>
+              <button type="button" data-preset="custom">custom…</button>
+            </div>
+            <div id="sched-custom" hidden>
+              <input type="date" id="sched-cdate" />
+              <input type="time" id="sched-ctime" />
+            </div>
           </div>
-        </div>
 
-        <label class="sched-row">
-          <input type="checkbox" id="sched-autostart" />
-          <span>Auto-start timer</span>
-        </label>
-        <button id="sched-save" type="button">Set schedule</button>
-      </section>
+          <div id="sched-recurring" hidden>
+            <input type="time" id="sched-time" />
+            <div class="weekdays">
+              <label><input type="checkbox" data-wd="0" />M</label>
+              <label><input type="checkbox" data-wd="1" />T</label>
+              <label><input type="checkbox" data-wd="2" />W</label>
+              <label><input type="checkbox" data-wd="3" />T</label>
+              <label><input type="checkbox" data-wd="4" />F</label>
+              <label><input type="checkbox" data-wd="5" />S</label>
+              <label><input type="checkbox" data-wd="6" />S</label>
+            </div>
+          </div>
+
+          <label class="sched-row" id="sched-auto-row" hidden>
+            <input type="checkbox" id="sched-autostart" />
+            <span>Auto-start timer</span>
+          </label>
+
+          <div class="sched-actions" id="sched-actions" hidden>
+            <button id="sched-save" type="button">Set schedule</button>
+          </div>
+          <span id="sched-status" class="sched-status" aria-live="polite"></span>
+        </div>
+      </div>
 
       <div
         class="note__body"

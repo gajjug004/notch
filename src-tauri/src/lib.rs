@@ -56,22 +56,9 @@ pub fn run() {
                 }
             }
 
-            // 3) Restore: open a window per saved task. Snapshot under lock,
-            //    drop the guard before spawning windows.
-            let tasks: Vec<task::Task> = {
-                let state = app.state::<AppState>();
-                let guard = state.tasks.lock().map_err(|e| e.to_string())?;
-                guard.values().cloned().collect()
-            };
-
-            if tasks.is_empty() {
-                // First run: give the user one note instead of an empty desktop.
-                commands::create_task(handle.clone()).map_err(|e| e.to_string())?;
-            } else {
-                for t in &tasks {
-                    window::open_task_window(&handle, t).map_err(|e| e.to_string())?;
-                }
-            }
+            // 3) Open the single main window (list + detail SPA). An empty task
+            //    list is fine on first run — the list view offers "+ New".
+            window::open_main_window(&handle).map_err(|e| e.to_string())?;
 
             // 4) System tray.
             tray::build_tray(&handle)?;
@@ -100,16 +87,16 @@ pub fn run() {
             commands::pause_all,
             commands::resume_all,
         ])
-        // Minimize-to-tray: closing a note hides it; settings really closes.
+        // Minimize-to-tray: closing the main window hides it; settings really closes.
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() != "settings" {
+                if window.label() == window::MAIN_LABEL {
                     api.prevent_close();
                     let _ = window.hide();
                 }
             }
         })
-        // Don't quit when the last note window closes; only the tray Quit exits.
+        // Don't quit when the main window hides; only the tray Quit exits.
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|_app, event| {

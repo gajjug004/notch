@@ -9,6 +9,11 @@
   box-sizing: border-box;
 }
 
+/* Drives the list/detail swap; overrides flex display on .view. */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
@@ -25,7 +30,8 @@ body {
   user-select: none;
 }
 
-.note {
+.note,
+.view {
   position: fixed;
   inset: 6px; /* gap = room for CSS shadow */
   display: flex;
@@ -56,24 +62,6 @@ body {
   background: rgba(0, 0, 0, 0.25);
 }
 
-.palette {
-  display: flex;
-  gap: 4px;
-  padding: 4px 10px 2px;
-}
-.swatch {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.25);
-  cursor: pointer;
-  padding: 0;
-}
-.swatch.active {
-  outline: 2px solid rgba(0, 0, 0, 0.55);
-  outline-offset: 1px;
-}
-
 body.paused .note::after {
   content: "paused";
   position: absolute;
@@ -102,36 +90,85 @@ body.paused .note::after {
   color: rgba(0, 0, 0, 0.7);
 }
 
+/* fills the drag strip between back and the right-side buttons */
+.strip-fill {
+  flex: 1 1 auto;
+  align-self: stretch;
+}
+
 .note__title {
   border: none;
   outline: none;
   background: transparent;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 600;
-  padding: 8px 10px 2px;
+  letter-spacing: -0.01em;
+  padding: 16px 16px 2px;
   color: inherit;
   /* inputs must be selectable/typeable — re-enable selection */
   user-select: text;
 }
+.note__title::placeholder {
+  color: rgba(0, 0, 0, 0.3);
+  font-weight: 500;
+}
 
+/* ---- timer: the clock is the hero ---- */
 .timer {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px 6px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  gap: 10px;
+  padding: 14px 16px 20px;
+}
+
+.clock {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  min-height: 3rem;
 }
 
 .timer-display {
-  font-size: 2rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  line-height: 1.1;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  padding: 0;
+  font-size: 2.9rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  cursor: default;
 }
 /* tabular-nums: digits keep constant width so the clock doesn't jitter */
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+/* idle countdown: invite a click to retime */
+.timer-display.editable {
+  cursor: text;
+}
+.timer-display.editable:hover {
+  text-decoration: underline dotted rgba(0, 0, 0, 0.3);
+  text-underline-offset: 6px;
+}
+
+.dur-input {
+  width: 6ch;
+  text-align: center;
+  border: none;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.3);
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 2.9rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  padding: 0;
+  outline: none;
+  user-select: text;
 }
 
 .timer-display.done {
@@ -146,71 +183,109 @@ body.paused .note::after {
 
 .mode-toggle {
   display: flex;
+  align-items: center;
   gap: 6px;
+}
+.mode-sep {
+  color: rgba(0, 0, 0, 0.3);
+  font-size: 11px;
 }
 .mode-btn {
   border: none;
   background: transparent;
   color: inherit;
   font-size: 11px;
-  padding: 1px 4px;
+  letter-spacing: 0.03em;
+  padding: 1px 2px;
   cursor: pointer;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 .mode-btn.active {
   font-weight: 700;
   text-decoration: underline;
+  text-underline-offset: 3px;
   opacity: 1;
-}
-
-.duration {
-  display: block;
-}
-.duration #dur-input {
-  width: 56px;
-  text-align: center;
-  border: 1px solid rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.4);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  padding: 1px 2px;
-  user-select: text;
-}
-/* stopwatch mode has no fixed duration */
-.timer[data-mode="stopwatch"] .duration {
-  display: none;
 }
 
 .timer-controls {
   display: flex;
-  gap: 6px;
+  gap: 10px;
+  margin-top: 2px;
 }
 .timer-controls button {
   border: none;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.08);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.06);
   color: inherit;
-  font-size: 11px;
-  padding: 2px 8px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  padding: 5px 16px;
   cursor: pointer;
 }
 .timer-controls button:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.16);
+  background: rgba(0, 0, 0, 0.12);
 }
 .timer-controls button:disabled {
   opacity: 0.4;
   cursor: default;
 }
+#btn-toggle.running {
+  color: #2e9e54;
+  font-weight: 600;
+}
 
-.schedule {
+/* ---- schedule: thin trigger row + floating popover ---- */
+.sched-bar {
+  position: relative; /* anchor for the absolute popover */
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 11px;
+}
+.sched-trigger {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+.sched-trigger:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+.sched-summary {
+  flex: 1 1 auto;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sched-chev {
+  flex: 0 0 auto;
+  color: rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease;
+}
+.sched-chev.open {
+  transform: rotate(90deg);
+}
+
+.sched-pop {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 100%;
+  z-index: 20;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 4px 10px 6px;
-  font-size: 11px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  gap: 8px;
+  padding: 10px 12px 8px;
+  background: var(--note-bg-strip);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
 }
+
 .sched-row {
   display: flex;
   align-items: center;
@@ -219,19 +294,43 @@ body.paused .note::after {
 .sched-row span {
   flex: 0 0 auto;
 }
-.schedule select,
-.schedule input[type="datetime-local"],
-.schedule input[type="time"] {
+.sched-pop select,
+.sched-pop input[type="time"],
+.sched-pop input[type="date"] {
   font-size: 11px;
   border: 1px solid rgba(0, 0, 0, 0.2);
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.6);
   user-select: text;
 }
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.presets button {
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.07);
+  color: inherit;
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.presets button:hover {
+  background: rgba(0, 0, 0, 0.14);
+}
+#sched-custom {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
 .weekdays {
   display: flex;
   gap: 2px;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 .weekdays label {
   display: inline-flex;
@@ -239,22 +338,39 @@ body.paused .note::after {
   align-items: center;
   font-size: 9px;
 }
+
+.sched-actions {
+  display: flex;
+  gap: 6px;
+}
 #sched-save {
-  align-self: flex-start;
   border: none;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.1);
   color: inherit;
   font-size: 11px;
-  padding: 2px 8px;
+  padding: 4px 12px;
   cursor: pointer;
 }
 #sched-save:hover {
-  background: rgba(0, 0, 0, 0.16);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.sched-status {
+  display: block;
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.6);
+  min-height: 0;
+}
+.sched-status:empty {
+  display: none;
+}
+.sched-status--err {
+  color: #b00020;
 }
 
 .sched-fired {
-  margin: 4px 10px 0;
+  margin: 4px 16px 0;
   border: none;
   border-radius: 6px;
   background: #e2483d;
@@ -268,13 +384,14 @@ body.paused .note::after {
 .note__body {
   flex: 1 1 auto;
   outline: none;
-  padding: 4px 10px 10px;
+  padding: 12px 16px 14px;
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 1.5;
   overflow-y: auto;
   white-space: pre-wrap;
   word-break: break-word;
   user-select: text;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 /* contenteditable placeholder */
@@ -282,4 +399,130 @@ body.paused .note::after {
   content: attr(data-placeholder);
   color: rgba(0, 0, 0, 0.35);
   pointer-events: none;
+}
+
+/* ===================== drag strip: shared buttons ===================== */
+
+.strip-title {
+  flex: 1 1 auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.5);
+  letter-spacing: 0.02em;
+}
+
+.note__hide,
+.back-btn {
+  border: none;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 16px;
+  line-height: 1;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+.note__hide:hover,
+.back-btn:hover {
+  background: rgba(0, 0, 0, 0.12);
+  color: rgba(0, 0, 0, 0.7);
+}
+
+/* In the detail strip, push delete + hide to the right of the back button. */
+#detail-view .note__del {
+  margin-left: auto;
+}
+
+/* ===================== list view ===================== */
+
+.list-head {
+  padding: 6px 10px 4px;
+}
+.new-btn {
+  width: 100%;
+  border: 1px dashed rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.35);
+  color: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px;
+  cursor: pointer;
+}
+.new-btn:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.task-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 2px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.4);
+  color: inherit;
+  padding: 7px 9px;
+  cursor: pointer;
+  font: inherit;
+}
+.task-row:hover {
+  background: rgba(255, 255, 255, 0.7);
+}
+.task-row.running {
+  box-shadow: inset 3px 0 0 #2e9e54;
+}
+
+.task-row__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.task-row__title {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.task-row__sched {
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.task-row__sched:empty {
+  display: none;
+}
+
+.task-row__time {
+  flex: 0 0 auto;
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.75);
+}
+.task-row.running .task-row__time {
+  color: #2e9e54;
+}
+
+.list-empty {
+  margin: 12px 14px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.5);
+  line-height: 1.4;
 }

@@ -30,8 +30,46 @@ See [plan.md](plan.md) for the design and [docs/](docs/) for per-phase specs.
 | 3 | Timer | ✅ done | `9800379` |
 | 4 | Schedule + notifications | ✅ done | `fd914ce` |
 | 5 | Polish (sound/autostart/colors/settings/packaging) | ✅ done | (this commit) |
+| 6 | Single-window list/detail refactor | ✅ done | (pending) |
 
-**All 5 phases complete.**
+**Phases 0–6 complete.**
+
+## Phase 6 — single-window list/detail (UX overhaul)
+
+Dropped the one-OS-window-per-task model. Now **one** frameless/transparent/
+always-on-top window (label `"main"`) that swaps between:
+- **List view**: a row per task with live timer/stopwatch + schedule badge,
+  a `+ New task` button, hide-to-tray ×.
+- **Detail view**: the former note layout (title, palette, timer, schedule,
+  body) + `← Back` and a 🗑 delete button.
+
+Backend: `window.rs` → `open_main_window` (+ `MAIN_LABEL`); tick/commands emit
+events **globally** (frontend routes by payload `id`) instead of `emit_to(label)`;
+new `tasks-changed` event refreshes the list; `lib.rs` opens one window and
+hides-to-tray on the `"main"` label; tray = New task / Show window / Settings /
+Quit. `Task.window` geometry field retained but unused.
+
+Frontend: `main.ts` is now the shell/router; `timer.ts`/`schedule.ts` became
+setup-once + `load(task)` controllers (no per-task re-init / unlisten juggling).
+
+`cargo check` + `tsc --noEmit` + `npm run build` clean. Visual/interaction
+acceptance still needs a manual run.
+
+## Phase 7 — minimal task view + drop color palette
+
+- Removed the color/theme palette entirely (HTML + `buildPalette`/`applyColor`
+  in `main.ts` + `.palette`/`.swatch` CSS + list row color accent). Window stays
+  the fixed `:root` yellow. Backend `set_task_color` kept but now unused;
+  `Task.color` retained, defaults yellow.
+- Click-to-edit clock: dropped the separate duration field; `#timer-display` is a
+  button — clicking it while idle+countdown swaps in `#dur-input` to retype the
+  time (`timer.ts` open/closeEdit + `applyConfig`).
+- Start ⇄ Pause is now one `#btn-toggle` (+ `#btn-reset`); `renderTimerTick`
+  sets its label/`running` class.
+- Schedule collapses: everything but the kind selector lives in `#sched-body`,
+  hidden until a kind is picked (`schedule.ts syncVisibility`).
+- Restyled minimal: hero clock, hairline rules, ghost buttons, more whitespace,
+  lowercase captions. `tsc` + `npm run build` clean.
 
 Each ✅ phase: `cargo check` + `tsc --noEmit` clean, builds and launches
 without panics. Visual/interaction acceptance left to manual run (headless

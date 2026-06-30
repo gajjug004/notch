@@ -8,26 +8,17 @@ use crate::settings;
 use crate::state::{persist, AppState};
 use crate::task::Task;
 use crate::timer::{RunAnchor, TimerMode, TimerState};
-use crate::window::open_task_window;
 
-/// Create a new task, store it, and spawn its window.
+/// Create a new task and store it. The single main window's list refreshes via
+/// the `tasks-changed` event.
 #[tauri::command]
 pub fn create_task<R: Runtime>(app: AppHandle<R>) -> Result<Task, String> {
     let mut task = Task::new();
 
-    // New notes start with the user's configured default countdown length.
+    // New tasks start with the user's configured default countdown length.
     let default_secs = settings::get_u64(&app, "defaultCountdownSecs", 25 * 60);
     task.timer.duration_secs = default_secs;
     task.timer.remaining_secs = default_secs;
-
-    // Cascade new windows so they don't stack exactly on top of each other.
-    {
-        let state = app.state::<AppState>();
-        let guard = state.tasks.lock().map_err(|e| e.to_string())?;
-        let n = guard.len() as i32;
-        task.window.x = 120 + (n % 8) * 28;
-        task.window.y = 120 + (n % 8) * 28;
-    } // drop guard before further work
 
     {
         let state = app.state::<AppState>();
@@ -36,17 +27,13 @@ pub fn create_task<R: Runtime>(app: AppHandle<R>) -> Result<Task, String> {
     }
 
     persist(&app)?; // no lock held
-    open_task_window(&app, &task)?;
+    let _ = app.emit("tasks-changed", ());
     Ok(task)
 }
 
-/// Delete a task: destroy its window, drop from map, persist.
+/// Delete a task: drop from map, persist, refresh the list.
 #[tauri::command]
 pub fn delete_task<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), String> {
-    if let Some(win) = app.get_webview_window(&id) {
-        let _ = win.destroy();
-    }
-
     {
         let state = app.state::<AppState>();
         let mut guard = state.tasks.lock().map_err(|e| e.to_string())?;
@@ -54,6 +41,7 @@ pub fn delete_task<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), Stri
     }
 
     persist(&app)?;
+    let _ = app.emit("tasks-changed", ());
     Ok(())
 }
 
@@ -115,8 +103,7 @@ fn emit_now<R: Runtime>(app: &AppHandle<R>, id: &str) {
         })
     }; // lock dropped
     if let Some((id, remaining_secs, elapsed_secs, state)) = snapshot {
-        let _ = app.emit_to(
-            id.as_str(),
+        let _ = app.emit(
             "timer-tick",
             &serde_json::json!({
                 "id": id,
@@ -234,6 +221,7 @@ pub fn configure_timer<R: Runtime>(
     }
     persist(&app)?;
     emit_now(&app, &id);
+    let _ = app.emit("tasks-changed", ());
     Ok(())
 }
 
@@ -256,6 +244,7 @@ pub fn set_schedule<R: Runtime>(
         task.schedule = schedule;
     }
     persist(&app)?;
+    let _ = app.emit("tasks-changed", ());
     Ok(())
 }
 
@@ -275,6 +264,7 @@ pub fn set_task_color<R: Runtime>(
         task.color = color;
     }
     persist(&app)?;
+    let _ = app.emit("tasks-changed", ());
     Ok(())
 }
 

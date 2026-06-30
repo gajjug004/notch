@@ -18,14 +18,22 @@ export async function initSound(): Promise<void> {
 /** WebKit blocks Audio.play() until a user gesture; unlock once per window. */
 function armAudioUnlock(): void {
   const unlock = () => {
-    const a = new Audio();
+    if (!alertUrl) return;
+    // Play the real asset muted inside the gesture — a src-less Audio rejects
+    // and never satisfies WebKitGTK's media-activation unlock.
+    const a = new Audio(alertUrl);
     a.muted = true;
-    a.play().catch(() => {});
+    a.play()
+      .then(() => {
+        a.pause();
+        a.currentTime = 0;
+      })
+      .catch(() => {});
     window.removeEventListener("pointerdown", unlock);
     window.removeEventListener("keydown", unlock);
   };
-  window.addEventListener("pointerdown", unlock, { once: true });
-  window.addEventListener("keydown", unlock, { once: true });
+  window.addEventListener("pointerdown", unlock);
+  window.addEventListener("keydown", unlock);
 }
 
 async function soundEnabled(): Promise<boolean> {
