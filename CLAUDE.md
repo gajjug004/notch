@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Sticky Timer: a Linux desktop app — a single sticky-note window with a task list; each task has a timer/stopwatch and an optional schedule. Click a task to open its full-window detail editor. **Tauri v2** (Rust backend = source of truth) + vanilla TypeScript frontend (no framework). App id `com.stickytimer.app`.
+Notch: a Linux desktop app — a single sticky-note window with a task list; each task has a timer/stopwatch and an optional schedule. Click a task to open its full-window detail editor. **Tauri v2** (Rust backend = source of truth) + vanilla TypeScript frontend (no framework). App id `com.notch.app`, `productName=Notch`.
 
 See `plan.md` (design), `progress.md` (phase status / what works), `docs/` (per-phase specs).
 
@@ -26,15 +26,15 @@ cd src-tauri && cargo check   # backend
 
 No test suite exists. "Clean" = `cargo check` + `tsc --noEmit` pass and app launches without panics. Drag, transparency, tray clicks, timer counting need a real (non-headless) host to verify.
 
-**Notifications in dev (GNOME):** GNOME drops notification banners from any app with no installed `.desktop` entry, so timer/schedule notifications are silently suppressed under `npm run tauri dev` (the DBus call still fires; the shell ignores it). The notify app-name is the binary name `sticky-timer`, so install a matching entry once:
+**Notifications in dev (GNOME):** GNOME drops notification banners from any app with no installed `.desktop` entry, so timer/schedule notifications are silently suppressed under `npm run tauri dev` (the DBus call still fires; the shell ignores it). The notify app-name is the binary name `Notch`, so install a matching entry once:
 
 ```bash
-cat > ~/.local/share/applications/sticky-timer.desktop <<'EOF'
+cat > ~/.local/share/applications/Notch.desktop <<'EOF'
 [Desktop Entry]
 Type=Application
-Name=Sticky Timer
-Exec=sticky-timer
-Icon=sticky-timer
+Name=Notch
+Exec=Notch
+Icon=Notch
 Terminal=false
 Categories=Utility;
 X-GNOME-UsesNotifications=true
@@ -42,7 +42,7 @@ EOF
 update-desktop-database ~/.local/share/applications 2>/dev/null
 ```
 
-The packaged `.deb` already ships `sticky-timer.desktop` (matches `productName=sticky-timer`), so installed builds show notifications without this step.
+The packaged `.deb` already ships `Notch.desktop` (matches `productName=Notch`), so installed builds show notifications without this step.
 
 Packaging: `.deb` works. AppImage config present but its bundler (`linuxdeploy`) needs FUSE — fails in sandbox, builds on a real host.
 
@@ -50,7 +50,7 @@ Packaging: `.deb` works. AppImage config present but its bundler (`linuxdeploy`)
 
 **Rust owns all state.** Timers and schedules run in Rust so they survive window close and don't drift. The frontend renders state and sends edits; it never holds authoritative timer/schedule values.
 
-- **State**: `Mutex<HashMap<Id, Task>>` in `AppState` (`state.rs`), mirrored to `~/.local/share/com.stickytimer.app/tasks.json` via `persist()`.
+- **State**: `Mutex<HashMap<Id, Task>>` in `AppState` (`state.rs`), mirrored to `~/.local/share/com.notch.app/tasks.json` via `persist()`.
 - **Single window, list/detail SPA**: one frameless/transparent/always-on-top window labeled `"main"` (`window.rs:MAIN_LABEL`, `open_main_window`). The frontend (`main.ts`) swaps between a **list view** (one row per task, live timer + `⏰` schedule badge) and a **detail view** in the same window — no per-task OS windows.
 - **Minimal detail view** (fixed yellow, no color palette): hero clock that's **click-to-edit** when idle+countdown (`#timer-display` button ⇄ `#dur-input`), a `start`⇄`pause` toggle + `reset`, and a **collapsed schedule**: a thin trigger row opens a floating popover (`#sched-pop`, absolute over the notes) with quick presets (15m/30m/1h/3h/tonight/tmrw 10a) and a custom date+time; presets apply instantly, custom/recurring use **Set schedule**.
 - **Event routing**: with one window, Rust `emit`s events **globally** and the frontend routes by the `id` in each payload (`timer-tick`, `timer-done`, `play-sound`, `schedule-fired`). `tasks-changed` (create/delete/edit) tells the list to refresh.

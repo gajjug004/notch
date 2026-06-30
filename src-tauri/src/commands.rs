@@ -274,7 +274,7 @@ pub fn set_schedule<R: Runtime>(
 #[tauri::command]
 pub async fn telegram_test(token: String, chat_id: String) -> Result<(), String> {
     let text = telegram::format_message(
-        "✅ Sticky Timer",
+        "✅ Notch",
         "Telegram connected",
         "You'll get task alerts here.",
         None,

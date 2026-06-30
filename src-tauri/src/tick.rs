@@ -142,7 +142,7 @@ pub fn spawn_tick_loop(app: AppHandle) {
                 let _ = app.emit("timer-done", d);
                 // Desktop notification when a countdown finishes (mirrors schedules).
                 let title = if d.title.is_empty() {
-                    "Sticky Timer"
+                    "Notch"
                 } else {
                     d.title.as_str()
                 };
@@ -180,7 +180,7 @@ fn fire_schedule(app: &AppHandle, plan: FirePlan) {
         "Tap the note to start the timer."
     };
     let title = if plan.title.is_empty() {
-        "Sticky Timer"
+        "Notch"
     } else {
         plan.title.as_str()
     };

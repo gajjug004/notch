@@ -15,7 +15,7 @@ pub fn open_main_window<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
     }
 
     let win = WebviewWindowBuilder::new(app, MAIN_LABEL, WebviewUrl::App("index.html".into()))
-        .title("Sticky Timer")
+        .title("Notch")
         .inner_size(360.0, 560.0)
         .min_inner_size(280.0, 360.0)
         .decorations(false)
@@ -39,7 +39,7 @@ pub fn open_settings<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
         return Ok(());
     }
     WebviewWindowBuilder::new(app, "settings", WebviewUrl::App("settings.html".into()))
-        .title("Sticky Timer — Settings")
+        .title("Notch — Settings")
         .inner_size(360.0, 440.0)
         .resizable(false)
         .build()
