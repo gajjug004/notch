@@ -11,7 +11,7 @@ Capture thoughts. Track time. Get things done.
 <br />
 
 [![Release](https://github.com/gajjug004/notch/actions/workflows/release.yml/badge.svg)](https://github.com/gajjug004/notch/actions/workflows/release.yml)
-![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS-2e9e54)
+![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows-2e9e54)
 ![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%20v2-ffc131?logo=tauri&logoColor=white)
 ![Rust](https://img.shields.io/badge/Rust-2a2a22?logo=rust&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178c6?logo=typescript&logoColor=white)
@@ -72,10 +72,15 @@ Grab a build from the [Releases](../../releases) page:
 | Debian / Ubuntu | `.deb` |
 | Portable Linux | `.AppImage` |
 | macOS (Apple Silicon + Intel) | `.dmg` (universal) |
+| Windows 10/11 (x64) | `.exe` (NSIS installer) |
 
 The macOS `.dmg` is **unsigned**. On first launch, right-click the app →
 **Open** (or run `xattr -dr com.apple.quarantine /Applications/Notch.app`) to get
 past Gatekeeper.
+
+The Windows `.exe` is **unsigned**, so SmartScreen may warn on first run — click
+**More info → Run anyway**. The installer pulls in the Microsoft Edge **WebView2**
+runtime automatically if it isn't already present.
 
 ## Build from source
 
@@ -105,7 +110,8 @@ holds authoritative timer/schedule values.
 - State lives in a `Mutex<HashMap<Id, Task>>`, mirrored to
   `tasks.json` under the platform data dir
   (`~/.local/share/com.notch.desktop/` on Linux,
-  `~/Library/Application Support/com.notch.desktop/` on macOS).
+  `~/Library/Application Support/com.notch.desktop/` on macOS,
+  `%APPDATA%\com.notch.desktop\` on Windows).
 - A single 1-second tick loop drives **all** timers and schedules.
 - One frameless/transparent/always-on-top window swaps between a list view and a
   detail view — no per-task OS windows. Rust emits events globally; the frontend
