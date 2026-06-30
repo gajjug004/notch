@@ -131,11 +131,11 @@ function scheduleOnceAt(d: Date): void {
 function presetDate(preset: string): Date {
   const d = new Date();
   if (preset === "tonight") {
+    // Tonight stays tonight; the caller rejects it if 8pm already passed.
     d.setHours(20, 0, 0, 0);
-    if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
-  } else if (preset === "tmrw9") {
+  } else if (preset === "tmrw10") {
     d.setDate(d.getDate() + 1);
-    d.setHours(9, 0, 0, 0);
+    d.setHours(10, 0, 0, 0);
   }
   return d;
 }
@@ -186,7 +186,12 @@ export function setupSchedule(): void {
       syncKindUi();
       cdate.focus();
     } else if (btn.dataset.preset) {
-      scheduleOnceAt(presetDate(btn.dataset.preset));
+      const d = presetDate(btn.dataset.preset);
+      if (d.getTime() <= Date.now()) {
+        showStatus("That time has already passed", false);
+        return;
+      }
+      scheduleOnceAt(d);
     }
   });
 

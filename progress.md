@@ -30,9 +30,11 @@ See [plan.md](plan.md) for the design and [docs/](docs/) for per-phase specs.
 | 3 | Timer | ✅ done | `9800379` |
 | 4 | Schedule + notifications | ✅ done | `fd914ce` |
 | 5 | Polish (sound/autostart/colors/settings/packaging) | ✅ done | (this commit) |
-| 6 | Single-window list/detail refactor | ✅ done | (pending) |
+| 6 | Single-window list/detail refactor | ✅ done | `38c55f1` |
+| 7 | Minimal task view + drop palette | ✅ done | `38c55f1` |
+| 8 | Schedule popover + persistence fix | ✅ done | `c49c621` |
 
-**Phases 0–6 complete.**
+**Phases 0–8 complete.**
 
 ## Phase 6 — single-window list/detail (UX overhaul)
 
@@ -70,6 +72,28 @@ acceptance still needs a manual run.
   hidden until a kind is picked (`schedule.ts syncVisibility`).
 - Restyled minimal: hero clock, hairline rules, ghost buttons, more whitespace,
   lowercase captions. `tsc` + `npm run build` clean.
+
+## Phase 8 — schedule popover + persistence fix
+
+- Schedule is now a **thin trigger row + floating popover** (`#sched-pop`,
+  absolute over the notes so the description keeps full height). The list/detail
+  no longer reflows when scheduling.
+- One-tap **presets** (15m/30m/1h/3h/tonight/tmrw 10a) build an absolute
+  once-schedule and save instantly; **custom** reveals separate **date + time**
+  inputs (was a single `datetime-local` where the time was hard to find);
+  recurring keeps time + day chips. `Set schedule` only needed for custom/recurring.
+- Trigger row shows the current schedule via `scheduleBadge`; list rows show the
+  same `⏰ <time>` badge.
+- **Fix**: `save_task` now preserves the existing `schedule` (like it already did
+  for `timer`). Before, going Back ran `save_task` with a stale `detailTask`
+  payload and wiped the schedule just set via `set_schedule`.
+- Verified end-to-end under Xvfb (preset → store keeps `once` at the right time →
+  list row shows the badge). `cargo check` + `tsc` + build clean.
+
+Note: the bare Xvfb test display has **no window manager**, so windows pile at
+0,0 and fixed-coordinate clicks can hit the unhosted tray icon → a stray Settings
+window. Not an app bug (only the tray "Settings" item opens it; an untouched
+launch shows none).
 
 Each ✅ phase: `cargo check` + `tsc --noEmit` clean, builds and launches
 without panics. Visual/interaction acceptance left to manual run (headless
