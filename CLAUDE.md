@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Notch: a Linux desktop app — a single sticky-note window with a task list; each task has a timer/stopwatch and an optional schedule. Click a task to open its full-window detail editor. **Tauri v2** (Rust backend = source of truth) + vanilla TypeScript frontend (no framework). App id `com.notch.app`, `productName=Notch`.
+Notch: a Linux desktop app — a single sticky-note window with a task list; each task has a timer/stopwatch and an optional schedule. Click a task to open its full-window detail editor. **Tauri v2** (Rust backend = source of truth) + vanilla TypeScript frontend (no framework). App id `com.notch.desktop`, `productName=Notch`.
 
 See `plan.md` (design), `progress.md` (phase status / what works), `docs/` (per-phase specs).
 
@@ -50,7 +50,7 @@ Packaging: `.deb` works. AppImage config present but its bundler (`linuxdeploy`)
 
 **Rust owns all state.** Timers and schedules run in Rust so they survive window close and don't drift. The frontend renders state and sends edits; it never holds authoritative timer/schedule values.
 
-- **State**: `Mutex<HashMap<Id, Task>>` in `AppState` (`state.rs`), mirrored to `~/.local/share/com.notch.app/tasks.json` via `persist()`.
+- **State**: `Mutex<HashMap<Id, Task>>` in `AppState` (`state.rs`), mirrored to `~/.local/share/com.notch.desktop/tasks.json` via `persist()` (macOS: `~/Library/Application Support/com.notch.desktop/`).
 - **Single window, list/detail SPA**: one frameless/transparent/always-on-top window labeled `"main"` (`window.rs:MAIN_LABEL`, `open_main_window`). The frontend (`main.ts`) swaps between a **list view** (one row per task, live timer + `⏰` schedule badge) and a **detail view** in the same window — no per-task OS windows.
 - **Minimal detail view** (fixed yellow, no color palette): hero clock that's **click-to-edit** when idle+countdown (`#timer-display` button ⇄ `#dur-input`), a `start`⇄`pause` toggle + `reset`, and a **collapsed schedule**: a thin trigger row opens a floating popover (`#sched-pop`, absolute over the notes) with quick presets (15m/30m/1h/3h/tonight/tmrw 10a) and a custom date+time; presets apply instantly, custom/recurring use **Set schedule**.
 - **Event routing**: with one window, Rust `emit`s events **globally** and the frontend routes by the `id` in each payload (`timer-tick`, `timer-done`, `play-sound`, `schedule-fired`). `tasks-changed` (create/delete/edit) tells the list to refresh.

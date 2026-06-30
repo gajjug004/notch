@@ -1,8 +1,8 @@
 name: Release
 
-# Push a tag like `v0.1.0` to trigger a build. The job compiles on a real
-# Ubuntu runner (no FUSE sandbox issue), bundles the .deb + .AppImage, and
-# attaches them to a GitHub Release.
+# Push a tag like `v0.1.0` to trigger a build. Each matrix entry runs on a real
+# runner (no FUSE sandbox issue), bundles its platform's artifacts, and attaches
+# them to a single GitHub Release for the tag.
 on:
   push:
     tags:
@@ -14,13 +14,30 @@ permissions:
 
 jobs:
   release:
-    # Build on the OLDEST distro you want to support: the resulting .deb/AppImage
-    # require glibc >= this runner's. 22.04 ships webkit2gtk-4.1 (Tauri v2).
-    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Build on the OLDEST distro you want to support: the resulting
+          # .deb/AppImage require glibc >= this runner's. 22.04 ships
+          # webkit2gtk-4.1 (Tauri v2).
+          - os: ubuntu-22.04
+            bundles: deb,appimage
+            target-args: ""
+            rust-targets: ""
+          # One universal .dmg covers Apple Silicon + Intel. macos-latest is
+          # Apple Silicon; we add the x86_64 target so lipo can fatten it.
+          - os: macos-latest
+            bundles: app,dmg
+            target-args: "--target universal-apple-darwin"
+            rust-targets: "aarch64-apple-darwin,x86_64-apple-darwin"
+
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Linux build dependencies
+        if: matrix.os == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -37,10 +54,13 @@ jobs:
         run: npm ci
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
 
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          key: ${{ matrix.os }}
 
       - uses: tauri-apps/tauri-action@v0
         env:
@@ -48,8 +68,8 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Notch ${{ github.ref_name }}"
-          releaseBody: "Download the `.deb` (Debian/Ubuntu) or `.AppImage` (portable) below."
+          releaseBody: "Download the `.deb` (Debian/Ubuntu), `.AppImage` (portable Linux), or `.dmg` (macOS universal) below."
           # Draft so you review before it goes public; flip to false to auto-publish.
           releaseDraft: true
           prerelease: false
-          args: --bundles deb,appimage
+          args: --bundles ${{ matrix.bundles }} ${{ matrix.target-args }}
