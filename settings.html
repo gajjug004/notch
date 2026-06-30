@@ -17,39 +17,40 @@
       </nav>
 
       <section class="panel active" data-panel="general">
+        <h2 class="group">Timer</h2>
         <label class="row">
           <span>Default countdown (minutes)</span>
           <input id="default-mins" type="number" min="1" max="999" value="25" />
         </label>
+        <label class="row">
+          <input id="global-pause" type="checkbox" />
+          <span>Pause all timers</span>
+        </label>
 
+        <h2 class="group">Scheduling</h2>
         <label class="row">
           <span>Quick presets (minutes)</span>
           <input id="preset-mins" type="text" value="15, 30, 60, 180" />
         </label>
-
         <label class="row">
           <span>Tonight at</span>
           <input id="tonight-time" type="time" value="20:00" />
         </label>
-
         <label class="row">
           <span>Tomorrow at</span>
           <input id="tomorrow-time" type="time" value="10:00" />
         </label>
 
+        <h2 class="group">Alerts</h2>
         <label class="row">
           <input id="sound-on" type="checkbox" />
           <span>Play sound on alert</span>
         </label>
 
+        <h2 class="group">Startup</h2>
         <label class="row">
           <input id="autostart" type="checkbox" />
           <span>Start on login</span>
-        </label>
-
-        <label class="row">
-          <input id="global-pause" type="checkbox" />
-          <span>Pause all timers</span>
         </label>
       </section>
 
@@ -62,11 +63,13 @@
         <label class="row stacked">
           <span>Bot token</span>
           <input id="tg-token" type="password" placeholder="123456:ABC-DEF..." autocomplete="off" />
+          <small class="field-hint" id="tg-token-hint"></small>
         </label>
 
         <label class="row stacked">
           <span>Chat ID</span>
           <input id="tg-chat" type="text" placeholder="numeric id" autocomplete="off" />
+          <small class="field-hint" id="tg-chat-hint"></small>
         </label>
 
         <div class="row">

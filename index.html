@@ -18,15 +18,23 @@
         </button>
       </div>
 
-      <div class="list-head">
+      <div class="pause-banner" hidden>⏸ All timers paused</div>
+
+      <div class="list-head" id="list-head">
         <button class="new-btn" id="new-task" type="button">+ New task</button>
+        <button class="done-toggle" id="done-toggle" type="button" hidden>
+          Done
+        </button>
       </div>
 
       <div class="task-list" id="task-list"></div>
 
-      <p class="list-empty" id="list-empty" hidden>
-        No tasks yet. Tap <strong>+ New task</strong> to create one.
-      </p>
+      <div class="list-empty" id="list-empty" hidden>
+        <p>No tasks yet. Tap <strong>+ New task</strong> above.</p>
+        <button class="empty-action" id="empty-settings" type="button">
+          Open settings
+        </button>
+      </div>
     </main>
 
     <!-- ===================== DETAIL VIEW ===================== -->
@@ -36,13 +44,21 @@
           ←
         </button>
         <span class="strip-fill" data-tauri-drag-region></span>
-        <button class="note__del" id="delete" title="Delete task" type="button">
-          🗑
-        </button>
+        <span class="del-wrap">
+          <button class="note__del" id="delete" title="Delete task" type="button">
+            🗑
+          </button>
+          <span class="del-confirm" id="del-confirm" hidden>
+            <button id="del-yes" title="Confirm delete" type="button">delete</button>
+            <button id="del-no" title="Cancel" type="button">✕</button>
+          </span>
+        </span>
         <button class="note__hide" id="detail-hide" title="Hide to tray" type="button">
           ×
         </button>
       </div>
+
+      <div class="pause-banner" hidden>⏸ All timers paused</div>
 
       <input
         class="note__title"
@@ -82,15 +98,33 @@
           </button>
         </div>
 
-        <div class="timer-controls">
+        <p class="timer-status" id="timer-status" aria-live="polite"></p>
+
+        <div class="timer-controls" id="timer-controls">
           <button id="btn-toggle" type="button">start</button>
           <button id="btn-reset" type="button">reset</button>
+          <button id="btn-done" type="button">done</button>
+        </div>
+
+        <!-- Replaces the normal controls when a countdown reaches zero. -->
+        <div class="timer-finished" id="timer-finished" hidden>
+          <div class="timer-finished__actions">
+            <button id="fin-reset" type="button">reset</button>
+            <button id="fin-restart" type="button">start again</button>
+            <button id="fin-done" type="button">done</button>
+          </div>
         </div>
       </section>
 
-      <button class="sched-fired" id="sched-fired" type="button" hidden>
-        ▶ Scheduled — Start timer
-      </button>
+      <div class="sched-fired" id="sched-fired" hidden>
+        <span class="sched-fired__label">⏰ Due now</span>
+        <div class="sched-fired__actions">
+          <button id="fired-start" type="button">start</button>
+          <button id="fired-snooze5" type="button">snooze 5m</button>
+          <button id="fired-snooze15" type="button">snooze 15m</button>
+          <button id="fired-dismiss" type="button">dismiss</button>
+        </div>
+      </div>
 
       <div class="sched-bar" id="sched-bar">
         <button class="sched-trigger" id="sched-trigger" type="button">
@@ -100,9 +134,9 @@
 
         <div class="sched-pop" id="sched-pop" hidden>
           <label class="sched-row">
-            <span>Repeat</span>
+            <span>Schedule type</span>
             <select id="sched-kind">
-              <option value="none">Off</option>
+              <option value="none">No schedule</option>
               <option value="once">Once</option>
               <option value="recurring">Recurring</option>
             </select>

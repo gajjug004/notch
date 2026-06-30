@@ -3,6 +3,15 @@ use serde::{Deserialize, Serialize};
 use crate::schedule::Schedule;
 use crate::timer::Timer;
 
+/// Task lifecycle. New/old tasks default to Active so pre-lifecycle stores load.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum TaskStatus {
+    #[default]
+    Active,
+    Done,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Geometry {
     pub x: i32,
@@ -44,6 +53,12 @@ pub struct Task {
     // Phase 4: typed schedule. Null-tolerant for stores written before it existed.
     #[serde(default, deserialize_with = "de_schedule_or_default")]
     pub schedule: Schedule,
+
+    // Lifecycle. serde defaults load pre-lifecycle stores as Active.
+    #[serde(default)]
+    pub status: TaskStatus,
+    #[serde(default)]
+    pub completed_at: Option<String>, // RFC3339, set when marked Done
 }
 
 fn default_color() -> String {
@@ -79,6 +94,8 @@ impl Task {
             window: Geometry::default(),
             timer: Timer::default(),
             schedule: Schedule::default(),
+            status: TaskStatus::Active,
+            completed_at: None,
         }
     }
 }

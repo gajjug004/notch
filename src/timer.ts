@@ -70,6 +70,20 @@ function closeEdit(): void {
   el("timer-display").hidden = false;
 }
 
+/** Human-readable timer status line, e.g. "countdown · idle", "running". */
+function statusText(s: TimerState): string {
+  switch (s) {
+    case "running":
+      return "running";
+    case "paused":
+      return "paused";
+    case "done":
+      return "timer finished";
+    default:
+      return `${mode} · idle`;
+  }
+}
+
 /** Update the detail view's clock + controls from a Rust snapshot. */
 export function renderTimerTick(p: TickPayload): void {
   state = p.state;
@@ -84,11 +98,19 @@ export function renderTimerTick(p: TickPayload): void {
   if (editable) disp.title = "Click to set the time";
   else disp.removeAttribute("title");
 
+  el("timer-status").textContent = statusText(p.state);
+
   const running = p.state === "running";
   const toggle = el<HTMLButtonElement>("btn-toggle");
   toggle.textContent = running ? "pause" : "start";
   toggle.classList.toggle("running", running);
   toggle.disabled = p.state === "done";
+
+  // On done, swap the normal controls for the finished action block so
+  // start/reset/done aren't shown twice.
+  const finished = p.state === "done";
+  el("timer-controls").hidden = finished;
+  el("timer-finished").hidden = !finished;
 }
 
 /** Wire the detail timer controls ONCE. Handlers read the current task id. */

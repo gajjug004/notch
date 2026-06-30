@@ -19,6 +19,10 @@ let currentId: string | null = null;
 let tonightTime = "20:00";
 let tomorrowTime = "10:00";
 
+// Notify the app shell that a fired schedule was acted on, so the list can drop
+// its "needs start" state. Set in setupSchedule.
+let firedResolved: (id: string) => void = () => {};
+
 function labelMins(m: number): string {
   if (m < 60) return `${m}m`;
   const h = Math.floor(m / 60);
@@ -134,7 +138,7 @@ async function save(s: Schedule, label: string): Promise<void> {
   if (!currentId) return;
   try {
     await invoke("set_schedule", { id: currentId, schedule: s });
-    el<HTMLButtonElement>("sched-fired").hidden = true;
+    el("sched-fired").hidden = true;
     setSummary(s);
     showStatus(label);
     closePop();
@@ -182,7 +186,8 @@ function presetDate(preset: string): Date {
 
 // ---- setup (once) ---------------------------------------------------------
 
-export function setupSchedule(): void {
+export function setupSchedule(onFiredResolved: (id: string) => void): void {
+  firedResolved = onFiredResolved;
   void ensureNotificationPermission();
 
   el("sched-trigger").addEventListener("click", () => {
@@ -269,10 +274,34 @@ export function setupSchedule(): void {
     }
   });
 
-  // No auto-start: surface a Start button when the schedule fires.
-  el("sched-fired").addEventListener("click", () => {
+  // Fired-schedule action area (manual-start). Each action clears the prompt.
+  const resolveFired = () => {
+    const id = currentId;
+    el("sched-fired").hidden = true;
+    if (id) firedResolved(id);
+  };
+  el("fired-start").addEventListener("click", () => {
     if (currentId) void invoke("start_timer", { id: currentId });
-    el<HTMLButtonElement>("sched-fired").hidden = true;
+    resolveFired();
+  });
+  const snooze = (mins: number) => {
+    if (!currentId) return;
+    void invoke("snooze_task", { id: currentId, minutes: mins });
+    // Reflect the new one-shot time in the trigger summary right away
+    // (backend re-armed it; otherwise the bar would stale to "Schedule").
+    setSummary({
+      kind: "once",
+      at: toLocalInput(new Date(Date.now() + mins * 60000)),
+      weekdays: [],
+      auto_start: autoStart(),
+    });
+    resolveFired();
+  };
+  el("fired-snooze5").addEventListener("click", () => snooze(5));
+  el("fired-snooze15").addEventListener("click", () => snooze(15));
+  el("fired-dismiss").addEventListener("click", () => {
+    if (currentId) void invoke("dismiss_fired_schedule", { id: currentId });
+    resolveFired();
   });
 
   // Dismiss the popover on outside click / Escape.
@@ -304,7 +333,7 @@ export function loadSchedule(task: Task): void {
     cb.checked = s.weekdays.includes(Number(cb.dataset.wd));
   }
 
-  el<HTMLButtonElement>("sched-fired").hidden = true;
+  el("sched-fired").hidden = true;
   showStatus("");
   setSummary(s);
   closePop();
@@ -319,7 +348,7 @@ export function unloadSchedule(): void {
 /** A schedule fired for `id`: if it's the open task, surface the Start button. */
 export function onScheduleFired(id: string): void {
   if (currentId !== id) return;
-  el<HTMLButtonElement>("sched-fired").hidden = false;
+  el("sched-fired").hidden = false;
   // A one-shot is now spent — reflect it in the trigger summary.
   setSummary({
     kind: "none",

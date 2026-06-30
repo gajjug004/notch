@@ -47,6 +47,45 @@ pub fn format_message(prefix: &str, title: &str, content: &str, extra: Option<&s
     msg
 }
 
+// ---- event-specific templates ---------------------------------------------
+// Each wraps the shared `format_message` builder so HTML-escaping stays in one
+// place. Copy mirrors `ux-enhancement-plan.md`.
+
+/// Countdown reached zero.
+pub fn format_timer_done(title: &str, content: &str) -> String {
+    format_message(
+        "⏰ Timer finished",
+        title,
+        content,
+        Some("Open Notch to reset, restart, or mark done."),
+    )
+}
+
+/// A schedule fired. Hint differs by whether the timer auto-started.
+pub fn format_schedule_fired(title: &str, content: &str, auto_start: bool) -> String {
+    let hint = if auto_start {
+        "Timer started automatically."
+    } else {
+        "Open Notch to start or snooze."
+    };
+    format_message("📌 Task due now", title, content, Some(hint))
+}
+
+/// A future schedule was set/updated. `due` is a preformatted local time.
+pub fn format_task_scheduled(title: &str, content: &str, due: &str) -> String {
+    format_message("🗓 Task scheduled", title, content, Some(&format!("Due: {due}")))
+}
+
+/// Settings "Send test" probe.
+pub fn format_test_message() -> String {
+    format_message(
+        "✅ Notch connected",
+        "Telegram alerts are ready.",
+        "",
+        Some("You will receive scheduled task and timer alerts here."),
+    )
+}
+
 /// Spawn an async send if Telegram is enabled+configured. Never blocks, never errors out.
 pub fn send<R: Runtime>(app: &AppHandle<R>, text: String) {
     let Some((token, chat_id)) = config(app) else {

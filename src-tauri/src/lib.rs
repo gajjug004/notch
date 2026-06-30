@@ -88,6 +88,10 @@ pub fn run() {
             commands::pause_all,
             commands::resume_all,
             commands::telegram_test,
+            commands::complete_task,
+            commands::reopen_task,
+            commands::snooze_task,
+            commands::dismiss_fired_schedule,
         ])
         // Minimize-to-tray: closing the main window hides it; settings really closes.
         .on_window_event(|window, event| {

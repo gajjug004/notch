@@ -7,8 +7,8 @@ use crate::schedule::{next_fire_time, Schedule, ScheduleKind};
 use crate::settings;
 use crate::telegram;
 use crate::state::{persist, AppState};
-use crate::task::Task;
-use crate::timer::{RunAnchor, TimerMode, TimerState};
+use crate::task::{Task, TaskStatus};
+use crate::timer::{RunAnchor, Timer, TimerMode, TimerState};
 
 /// Create a new task and store it. The single main window's list refreshes via
 /// the `tasks-changed` event.
@@ -79,6 +79,9 @@ pub fn save_task<R: Runtime>(app: AppHandle<R>, task: Task) -> Result<(), String
             // a stale save_task payload clobber them.
             task.timer = existing.timer.clone();
             task.schedule = existing.schedule.clone();
+            // Lifecycle is owned by complete_task/reopen_task, not text saves.
+            task.status = existing.status;
+            task.completed_at = existing.completed_at.clone();
         }
         guard.insert(task.id.clone(), task);
     }
@@ -149,6 +152,29 @@ pub fn start_timer<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), Stri
     Ok(())
 }
 
+/// Fold a running timer's in-flight segment into the stored numbers, drop the
+/// anchor, and mark it Paused. No-op unless currently Running.
+fn fold_and_pause(t: &mut Timer) {
+    if t.state != TimerState::Running {
+        return;
+    }
+    if let Some(anchor) = t.anchor.take() {
+        let run = Instant::now()
+            .saturating_duration_since(anchor.started_at)
+            .as_secs();
+        let spent = anchor.base_secs + run;
+        match t.mode {
+            TimerMode::Stopwatch => t.elapsed_secs = spent,
+            TimerMode::Countdown => {
+                let spent = spent.min(t.duration_secs);
+                t.elapsed_secs = spent;
+                t.remaining_secs = t.duration_secs - spent;
+            }
+        }
+    }
+    t.state = TimerState::Paused;
+}
+
 /// Pause: fold the in-flight segment into the stored numbers, drop the anchor.
 #[tauri::command]
 pub fn pause_timer<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), String> {
@@ -156,26 +182,10 @@ pub fn pause_timer<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), Stri
         let state = app.state::<AppState>();
         let mut guard = state.tasks.lock().map_err(|e| e.to_string())?;
         let task = guard.get_mut(&id).ok_or("no such task")?;
-        let t = &mut task.timer;
-
-        if t.state != TimerState::Running {
+        if task.timer.state != TimerState::Running {
             return Ok(());
         }
-        let now = Instant::now();
-
-        if let Some(anchor) = t.anchor.take() {
-            let run = now.saturating_duration_since(anchor.started_at).as_secs();
-            let spent = anchor.base_secs + run;
-            match t.mode {
-                TimerMode::Stopwatch => t.elapsed_secs = spent,
-                TimerMode::Countdown => {
-                    let spent = spent.min(t.duration_secs);
-                    t.elapsed_secs = spent;
-                    t.remaining_secs = t.duration_secs - spent;
-                }
-            }
-        }
-        t.state = TimerState::Paused;
+        fold_and_pause(&mut task.timer);
     }
     persist(&app)?;
     emit_now(&app, &id);
@@ -251,12 +261,7 @@ pub fn set_schedule<R: Runtime>(
         if task.schedule.kind != ScheduleKind::None {
             next_fire_time(&task.schedule, chrono::Local::now()).map(|at| {
                 let when = at.format("%a %d %b, %H:%M").to_string();
-                telegram::format_message(
-                    "📌 Task scheduled",
-                    &task.title,
-                    &task.content,
-                    Some(&format!("Fires {when}")),
-                )
+                telegram::format_task_scheduled(&task.title, &task.content, &when)
             })
         } else {
             None
@@ -273,12 +278,7 @@ pub fn set_schedule<R: Runtime>(
 /// Settings "Send test" — push a probe message, surfacing any API error.
 #[tauri::command]
 pub async fn telegram_test(token: String, chat_id: String) -> Result<(), String> {
-    let text = telegram::format_message(
-        "✅ Notch",
-        "Telegram connected",
-        "You'll get task alerts here.",
-        None,
-    );
+    let text = telegram::format_test_message();
     telegram::post(token.trim(), chat_id.trim(), &text).await
 }
 
@@ -323,4 +323,86 @@ pub fn resume_all<R: Runtime>(app: AppHandle<R>) {
         .store(false, Ordering::Relaxed);
     settings::set_value(&app, "globalPause", false.into());
     let _ = app.emit("global-pause", false);
+}
+
+// ---- lifecycle: done / reopen / snooze / dismiss --------------------------
+
+/// Mark a task Done. Folds a running timer so a finished task stops counting.
+#[tauri::command]
+pub fn complete_task<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), String> {
+    {
+        let state = app.state::<AppState>();
+        let mut guard = state.tasks.lock().map_err(|e| e.to_string())?;
+        let task = guard.get_mut(&id).ok_or("no such task")?;
+        fold_and_pause(&mut task.timer); // no-op unless running
+        task.status = TaskStatus::Done;
+        task.completed_at = Some(chrono::Local::now().to_rfc3339());
+    }
+    persist(&app)?;
+    let _ = app.emit("tasks-changed", ());
+    Ok(())
+}
+
+/// Reopen a Done task back to Active.
+#[tauri::command]
+pub fn reopen_task<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), String> {
+    {
+        let state = app.state::<AppState>();
+        let mut guard = state.tasks.lock().map_err(|e| e.to_string())?;
+        let task = guard.get_mut(&id).ok_or("no such task")?;
+        task.status = TaskStatus::Active;
+        task.completed_at = None;
+    }
+    persist(&app)?;
+    let _ = app.emit("tasks-changed", ());
+    Ok(())
+}
+
+/// Snooze a fired schedule: a fresh one-shot for the same task, `minutes` out,
+/// keeping the prior auto-start preference. Reuses set_schedule (persist +
+/// "task scheduled" Telegram notice + tasks-changed).
+#[tauri::command]
+pub fn snooze_task<R: Runtime>(
+    app: AppHandle<R>,
+    id: String,
+    minutes: i64,
+) -> Result<(), String> {
+    let auto_start = {
+        let state = app.state::<AppState>();
+        let guard = state.tasks.lock().map_err(|e| e.to_string())?;
+        guard.get(&id).ok_or("no such task")?.schedule.auto_start
+    };
+    let at = (chrono::Local::now() + chrono::Duration::minutes(minutes.max(1)))
+        .format("%Y-%m-%dT%H:%M:%S")
+        .to_string();
+    let schedule = Schedule {
+        kind: ScheduleKind::Once,
+        at: Some(at),
+        weekdays: Vec::new(),
+        auto_start,
+        last_fired: None,
+    };
+    set_schedule(app, id, schedule)
+}
+
+/// Clear a recurring task's just-fired slot so it won't immediately re-surface
+/// the in-app "needs start" state. One-shots already self-clear on fire, so for
+/// them this is a no-op beyond a refresh.
+#[tauri::command]
+pub fn dismiss_fired_schedule<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), String> {
+    {
+        let state = app.state::<AppState>();
+        let mut guard = state.tasks.lock().map_err(|e| e.to_string())?;
+        let task = guard.get_mut(&id).ok_or("no such task")?;
+        if task.schedule.kind == ScheduleKind::Recurring {
+            if let Some(slot) = next_fire_time(&task.schedule, chrono::Local::now()) {
+                if slot <= chrono::Local::now() {
+                    task.schedule.last_fired = Some(slot.to_rfc3339());
+                }
+            }
+        }
+    }
+    persist(&app)?;
+    let _ = app.emit("tasks-changed", ());
+    Ok(())
 }

@@ -155,7 +155,7 @@ pub fn spawn_tick_loop(app: AppHandle) {
                 // Telegram push (best-effort; no-op if disabled/unconfigured).
                 crate::telegram::send(
                     &app,
-                    crate::telegram::format_message("⏰ Time's up", &d.title, &d.content, None),
+                    crate::telegram::format_timer_done(&d.title, &d.content),
                 );
             }
             let fired = !to_fire.is_empty();
@@ -190,7 +190,7 @@ fn fire_schedule(app: &AppHandle, plan: FirePlan) {
     // Telegram push (best-effort; no-op if disabled/unconfigured).
     crate::telegram::send(
         app,
-        crate::telegram::format_message("📅 Scheduled task", &plan.title, &plan.content, Some(body)),
+        crate::telegram::format_schedule_fired(&plan.title, &plan.content, plan.auto_start),
     );
 
     // Bring the single main window to the front.

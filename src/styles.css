@@ -62,14 +62,16 @@ body {
   background: rgba(0, 0, 0, 0.25);
 }
 
-body.paused .note::after {
-  content: "paused";
-  position: absolute;
-  top: 4px;
-  right: 6px;
-  font-size: 9px;
-  color: #e2483d;
+/* Persistent global-pause banner, shown in both list and detail views. */
+.pause-banner {
+  flex: 0 0 auto;
+  text-align: center;
+  font-size: 11px;
   font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #b3392f;
+  background: rgba(226, 72, 61, 0.16);
+  padding: 4px 8px;
 }
 
 .note__del {
@@ -88,6 +90,38 @@ body.paused .note::after {
 .note__del:hover {
   background: rgba(0, 0, 0, 0.12);
   color: rgba(0, 0, 0, 0.7);
+}
+
+/* Inline delete confirm (swaps in place of the 🗑 button). */
+.del-wrap {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+}
+.del-wrap .note__del {
+  margin-left: 0;
+}
+.del-confirm {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.del-confirm button {
+  border: none;
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+#del-yes {
+  background: rgba(200, 40, 40, 0.85);
+  color: #fff;
+  font-weight: 700;
+}
+#del-no {
+  background: rgba(0, 0, 0, 0.12);
+  color: rgba(0, 0, 0, 0.6);
 }
 
 /* fills the drag strip between back and the right-side buttons */
@@ -234,6 +268,44 @@ body.paused .note::after {
   font-weight: 600;
 }
 
+.timer-status {
+  margin: 0 0 2px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+/* Finished-countdown action block. */
+.timer-finished {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.timer-finished__label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9a5a00;
+}
+.timer-finished__actions {
+  display: flex;
+  gap: 8px;
+}
+.timer-finished__actions button {
+  border: none;
+  border-radius: 7px;
+  background: rgba(214, 122, 0, 0.16);
+  color: #9a5a00;
+  font-size: 12px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+.timer-finished__actions button:hover {
+  background: rgba(214, 122, 0, 0.28);
+}
+
 /* ---- schedule: thin trigger row + floating popover ---- */
 .sched-bar {
   position: relative; /* anchor for the absolute popover */
@@ -374,15 +446,44 @@ body.paused .note::after {
 }
 
 .sched-fired {
-  margin: 4px 16px 0;
+  margin: 6px 16px 0;
+  border-radius: 7px;
+  background: rgba(226, 72, 61, 0.12);
+  border: 1px solid rgba(226, 72, 61, 0.4);
+  padding: 7px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sched-fired__label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #b3392f;
+}
+.sched-fired__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sched-fired__actions button {
   border: none;
   border-radius: 6px;
-  background: #e2483d;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 5px;
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+  font-size: 11px;
+  padding: 4px 9px;
   cursor: pointer;
+}
+.sched-fired__actions button:hover {
+  background: rgba(0, 0, 0, 0.16);
+}
+#fired-start {
+  background: rgba(46, 158, 84, 0.22);
+  color: #1f7a3f;
+  font-weight: 600;
+}
+#fired-start:hover {
+  background: rgba(46, 158, 84, 0.34);
 }
 
 .note__body {
@@ -443,9 +544,28 @@ body.paused .note::after {
 
 .list-head {
   padding: 6px 10px 4px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.done-toggle {
+  flex: 0 0 auto;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.25);
+  color: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.done-toggle:hover,
+.done-toggle.active {
+  background: rgba(255, 255, 255, 0.6);
 }
 .new-btn {
-  width: 100%;
+  flex: 1 1 auto;
   border: 1px dashed rgba(0, 0, 0, 0.3);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.35);
@@ -503,6 +623,12 @@ body.paused .note::after {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.task-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
 .task-row__sched {
   font-size: 10px;
   color: rgba(0, 0, 0, 0.55);
@@ -512,6 +638,35 @@ body.paused .note::after {
 }
 .task-row__sched:empty {
   display: none;
+}
+
+.task-row__badge {
+  flex: 0 0 auto;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.12);
+  color: rgba(0, 0, 0, 0.6);
+}
+.task-row__badge--running {
+  background: rgba(46, 158, 84, 0.22);
+  color: #1f7a3f;
+}
+.task-row__badge--fired,
+.task-row__badge--finished {
+  background: rgba(214, 122, 0, 0.24);
+  color: #9a5a00;
+}
+.task-row__badge--done {
+  background: rgba(0, 0, 0, 0.1);
+  color: rgba(0, 0, 0, 0.45);
+}
+.task-row.is-done .task-row__title {
+  text-decoration: line-through;
+  opacity: 0.6;
 }
 
 .task-row__time {
@@ -525,8 +680,29 @@ body.paused .note::after {
 }
 
 .list-empty {
-  margin: 12px 14px;
+  margin: 16px 14px;
   font-size: 12px;
   color: rgba(0, 0, 0, 0.5);
   line-height: 1.4;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.list-empty p {
+  margin: 0 0 2px;
+  text-align: center;
+}
+.empty-action {
+  border: 1px dashed rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.35);
+  color: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px;
+  cursor: pointer;
+}
+.empty-action:hover {
+  background: rgba(255, 255, 255, 0.6);
 }
