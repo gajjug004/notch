@@ -120,3 +120,56 @@ pub async fn post(token: &str, chat_id: &str, text: &str) -> Result<(), String> 
         Err(format!("Telegram API {status}: {body}"))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn templates_render_expected_copy() {
+        let done = format_timer_done("Write report", "Q3 summary");
+        assert_eq!(
+            done,
+            "<b>⏰ Timer finished</b>\nWrite report\n\nQ3 summary\n\n<i>Open Notch to reset, restart, or mark done.</i>"
+        );
+
+        let auto = format_schedule_fired("Standup", "", true);
+        assert_eq!(
+            auto,
+            "<b>📌 Task due now</b>\nStandup\n\n<i>Timer started automatically.</i>"
+        );
+        let manual = format_schedule_fired("Standup", "", false);
+        assert_eq!(
+            manual,
+            "<b>📌 Task due now</b>\nStandup\n\n<i>Open Notch to start or snooze.</i>"
+        );
+
+        let sched = format_task_scheduled("Call Bob", "ring twice", "Tue 30 Jun, 14:30");
+        assert_eq!(
+            sched,
+            "<b>🗓 Task scheduled</b>\nCall Bob\n\nring twice\n\n<i>Due: Tue 30 Jun, 14:30</i>"
+        );
+
+        let test = format_test_message();
+        assert_eq!(
+            test,
+            "<b>✅ Notch connected</b>\nTelegram alerts are ready.\n\n<i>You will receive scheduled task and timer alerts here.</i>"
+        );
+    }
+
+    #[test]
+    fn html_special_chars_are_escaped() {
+        // <, >, & in title and content must become entities.
+        let msg = format_timer_done("a<b>&c", "x > y & z < w");
+        assert_eq!(
+            msg,
+            "<b>⏰ Timer finished</b>\na&lt;b&gt;&amp;c\n\nx &gt; y &amp; z &lt; w\n\n<i>Open Notch to reset, restart, or mark done.</i>"
+        );
+    }
+
+    #[test]
+    fn empty_title_falls_back() {
+        let msg = format_task_scheduled("", "", "now");
+        assert_eq!(msg, "<b>🗓 Task scheduled</b>\nUntitled task\n\n<i>Due: now</i>");
+    }
+}

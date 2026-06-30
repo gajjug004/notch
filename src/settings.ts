@@ -176,7 +176,17 @@ window.addEventListener("DOMContentLoaded", async () => {
     flash("Sending…");
     try {
       await invoke("telegram_test", { token, chatId: chat_id });
-      flash("Test sent ✓");
+      // A successful test means the creds work — turn alerts on so real
+      // events actually send (Send test bypasses this gate, which otherwise
+      // makes "test works but nothing else arrives" a silent trap).
+      if (!tgEnabledEl.checked) {
+        tgEnabledEl.checked = true;
+        await store.set("telegramEnabled", true);
+        await store.save();
+        flash("Test sent ✓ — alerts on");
+      } else {
+        flash("Test sent ✓");
+      }
     } catch (e) {
       flash(`Failed: ${e}`);
     }
