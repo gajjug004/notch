@@ -3,6 +3,7 @@ import {
   isPermissionGranted,
   requestPermission,
 } from "@tauri-apps/plugin-notification";
+import { load } from "@tauri-apps/plugin-store";
 import type { Schedule, ScheduleKind, Task } from "./types";
 
 const el = <T extends HTMLElement>(elId: string): T =>
@@ -13,6 +14,43 @@ const pad = (n: number): string => String(n).padStart(2, "0");
 
 // The detail view edits one task's schedule at a time.
 let currentId: string | null = null;
+
+// Preset config, refreshed from Settings each time the popover opens.
+let tonightTime = "20:00";
+let tomorrowTime = "10:00";
+
+function labelMins(m: number): string {
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return mm === 0 ? `${h}h` : `${h}h${mm}m`;
+}
+
+/** Rebuild the minute chips + cache tonight/tomorrow times from Settings. */
+async function refreshPresets(): Promise<void> {
+  let minsStr = "15, 30, 60, 180";
+  try {
+    const s = await load("settings.json");
+    minsStr = (await s.get<string>("schedulePresetMins")) ?? minsStr;
+    tonightTime = (await s.get<string>("tonightTime")) ?? tonightTime;
+    tomorrowTime = (await s.get<string>("tomorrowTime")) ?? tomorrowTime;
+  } catch {
+    /* store missing → keep defaults */
+  }
+  const mins = minsStr
+    .split(",")
+    .map((x) => parseInt(x.trim(), 10))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  const wrap = el("sched-mins");
+  wrap.replaceChildren();
+  for (const m of mins) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.dataset.min = String(m);
+    b.textContent = labelMins(m);
+    wrap.appendChild(b);
+  }
+}
 
 // ---- formatting helpers ---------------------------------------------------
 
@@ -131,11 +169,13 @@ function scheduleOnceAt(d: Date): void {
 function presetDate(preset: string): Date {
   const d = new Date();
   if (preset === "tonight") {
-    // Tonight stays tonight; the caller rejects it if 8pm already passed.
-    d.setHours(20, 0, 0, 0);
-  } else if (preset === "tmrw10") {
+    // Tonight stays tonight; the caller rejects it if the time already passed.
+    const [h, m] = tonightTime.split(":").map(Number);
+    d.setHours(h || 0, m || 0, 0, 0);
+  } else if (preset === "tomorrow") {
     d.setDate(d.getDate() + 1);
-    d.setHours(10, 0, 0, 0);
+    const [h, m] = tomorrowTime.split(":").map(Number);
+    d.setHours(h || 0, m || 0, 0, 0);
   }
   return d;
 }
@@ -148,6 +188,7 @@ export function setupSchedule(): void {
   el("sched-trigger").addEventListener("click", () => {
     if (popOpen()) closePop();
     else {
+      void refreshPresets(); // pick up the latest Settings presets
       syncKindUi();
       openPop();
     }

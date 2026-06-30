@@ -309,6 +309,10 @@ body.paused .note::after {
   flex-wrap: wrap;
   gap: 4px;
 }
+/* the minute chips are injected here; let them join the flex row */
+#sched-mins {
+  display: contents;
+}
 .presets button {
   border: none;
   border-radius: 999px;
