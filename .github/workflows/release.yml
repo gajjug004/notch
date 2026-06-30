@@ -31,6 +31,12 @@ jobs:
             bundles: app,dmg
             target-args: "--target universal-apple-darwin"
             rust-targets: "aarch64-apple-darwin,x86_64-apple-darwin"
+          # Windows x64: NSIS .exe installer (downloads the WebView2 runtime at
+          # install time if missing). tauri-action fetches NSIS automatically.
+          - os: windows-latest
+            bundles: nsis
+            target-args: ""
+            rust-targets: ""
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -68,7 +74,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Notch ${{ github.ref_name }}"
-          releaseBody: "Download the `.deb` (Debian/Ubuntu), `.AppImage` (portable Linux), or `.dmg` (macOS universal) below."
+          releaseBody: "Download the `.deb` (Debian/Ubuntu), `.AppImage` (portable Linux), `.dmg` (macOS universal), or `.exe` (Windows x64) below."
           # Draft so you review before it goes public; flip to false to auto-publish.
           releaseDraft: true
           prerelease: false
