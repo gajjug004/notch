@@ -3,8 +3,9 @@ use std::time::Instant;
 
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
-use crate::schedule::Schedule;
+use crate::schedule::{next_fire_time, Schedule, ScheduleKind};
 use crate::settings;
+use crate::telegram;
 use crate::state::{persist, AppState};
 use crate::task::Task;
 use crate::timer::{RunAnchor, TimerMode, TimerState};
@@ -238,17 +239,47 @@ pub fn set_schedule<R: Runtime>(
     id: String,
     schedule: Schedule,
 ) -> Result<(), String> {
-    {
+    let notice = {
         let state = app.state::<AppState>();
         let mut guard = state.tasks.lock().map_err(|e| e.to_string())?;
         let task = guard.get_mut(&id).ok_or("no such task")?;
         let mut schedule = schedule;
         schedule.last_fired = None;
         task.schedule = schedule;
-    }
+
+        // Build a "task scheduled" Telegram notice for a future fire time.
+        if task.schedule.kind != ScheduleKind::None {
+            next_fire_time(&task.schedule, chrono::Local::now()).map(|at| {
+                let when = at.format("%a %d %b, %H:%M").to_string();
+                telegram::format_message(
+                    "📌 Task scheduled",
+                    &task.title,
+                    &task.content,
+                    Some(&format!("Fires {when}")),
+                )
+            })
+        } else {
+            None
+        }
+    };
     persist(&app)?;
+    if let Some(text) = notice {
+        telegram::send(&app, text);
+    }
     let _ = app.emit("tasks-changed", ());
     Ok(())
+}
+
+/// Settings "Send test" — push a probe message, surfacing any API error.
+#[tauri::command]
+pub async fn telegram_test(token: String, chat_id: String) -> Result<(), String> {
+    let text = telegram::format_message(
+        "✅ Sticky Timer",
+        "Telegram connected",
+        "You'll get task alerts here.",
+        None,
+    );
+    telegram::post(token.trim(), chat_id.trim(), &text).await
 }
 
 // ---- Phase 5: polish commands --------------------------------------------

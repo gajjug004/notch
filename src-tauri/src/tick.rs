@@ -22,6 +22,8 @@ struct TickPayload {
 struct DonePayload {
     id: String,
     title: String,
+    #[serde(skip)]
+    content: String,
 }
 
 /// Built under the lock, consumed after release (side effects must not run under
@@ -30,6 +32,7 @@ struct FirePlan {
     id: String,
     auto_start: bool,
     title: String,
+    content: String,
 }
 
 /// Grace window: a one-shot overdue by no more than this on boot still fires.
@@ -86,6 +89,7 @@ pub fn spawn_tick_loop(app: AppHandle) {
                                         dones.push(DonePayload {
                                             id: task.id.clone(),
                                             title: task.title.clone(),
+                                            content: task.content.clone(),
                                         });
                                     } else {
                                         t.elapsed_secs = spent;
@@ -115,6 +119,7 @@ pub fn spawn_tick_loop(app: AppHandle) {
                                     id: task.id.clone(),
                                     auto_start: task.schedule.auto_start,
                                     title: task.title.clone(),
+                                    content: task.content.clone(),
                                 });
                                 // one-shot is spent; recurring re-arms via next_fire_time
                                 if task.schedule.kind == ScheduleKind::Once {
@@ -147,6 +152,11 @@ pub fn spawn_tick_loop(app: AppHandle) {
                     .title(title)
                     .body("Timer finished.")
                     .show();
+                // Telegram push (best-effort; no-op if disabled/unconfigured).
+                crate::telegram::send(
+                    &app,
+                    crate::telegram::format_message("⏰ Time's up", &d.title, &d.content, None),
+                );
             }
             let fired = !to_fire.is_empty();
             for plan in to_fire {
@@ -176,6 +186,12 @@ fn fire_schedule(app: &AppHandle, plan: FirePlan) {
     };
     // Swallow errors: a missing notification daemon must not crash the loop.
     let _ = app.notification().builder().title(title).body(body).show();
+
+    // Telegram push (best-effort; no-op if disabled/unconfigured).
+    crate::telegram::send(
+        app,
+        crate::telegram::format_message("📅 Scheduled task", &plan.title, &plan.content, Some(body)),
+    );
 
     // Bring the single main window to the front.
     if let Some(win) = app.get_webview_window(crate::window::MAIN_LABEL) {
@@ -220,6 +236,7 @@ pub fn reconcile_on_boot(app: &AppHandle) {
                                     id: task.id.clone(),
                                     auto_start: task.schedule.auto_start,
                                     title: task.title.clone(),
+                                    content: task.content.clone(),
                                 });
                             }
                         }

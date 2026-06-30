@@ -30,6 +30,30 @@ body {
   width: 64px;
   padding: 2px 4px;
 }
+.row input[type="text"],
+.row input[type="password"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 3px 6px;
+}
+.section {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid #e2e2e2;
+}
+.hint {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #777;
+  margin: 0;
+}
+button#tg-test {
+  font-size: 12px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
 .status {
   min-height: 16px;
   margin: 4px 0 0;

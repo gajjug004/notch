@@ -28,6 +28,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   const soundEl = el<HTMLInputElement>("sound-on");
   const autoEl = el<HTMLInputElement>("autostart");
   const pauseEl = el<HTMLInputElement>("global-pause");
+  const tgEnabledEl = el<HTMLInputElement>("tg-enabled");
+  const tgTokenEl = el<HTMLInputElement>("tg-token");
+  const tgChatEl = el<HTMLInputElement>("tg-chat");
+  const tgTestEl = el<HTMLButtonElement>("tg-test");
 
   // Hydrate from store; autostart reflects real OS state, not the stored flag.
   const defaultSecs = (await store.get<number>("defaultCountdownSecs")) ?? 1500;
@@ -38,6 +42,9 @@ window.addEventListener("DOMContentLoaded", async () => {
   soundEl.checked = (await store.get<boolean>("soundOn")) ?? true;
   pauseEl.checked = (await store.get<boolean>("globalPause")) ?? false;
   autoEl.checked = await isEnabled();
+  tgEnabledEl.checked = (await store.get<boolean>("telegramEnabled")) ?? false;
+  tgTokenEl.value = (await store.get<string>("telegramToken")) ?? "";
+  tgChatEl.value = (await store.get<string>("telegramChatId")) ?? "";
 
   minsEl.addEventListener("change", async () => {
     const mins = Math.max(1, Math.min(999, Number(minsEl.value) || 25));
@@ -97,5 +104,41 @@ window.addEventListener("DOMContentLoaded", async () => {
   pauseEl.addEventListener("change", async () => {
     await invoke(pauseEl.checked ? "pause_all" : "resume_all");
     flash(pauseEl.checked ? "Paused all" : "Resumed");
+  });
+
+  // ---- Telegram ----
+  tgEnabledEl.addEventListener("change", async () => {
+    await store.set("telegramEnabled", tgEnabledEl.checked);
+    await store.save();
+    flash("Saved");
+  });
+
+  const saveText = (key: string, input: HTMLInputElement) =>
+    input.addEventListener("change", async () => {
+      await store.set(key, input.value.trim());
+      await store.save();
+      flash("Saved");
+    });
+  saveText("telegramToken", tgTokenEl);
+  saveText("telegramChatId", tgChatEl);
+
+  tgTestEl.addEventListener("click", async () => {
+    const token = tgTokenEl.value.trim();
+    const chat_id = tgChatEl.value.trim();
+    if (!token || !chat_id) {
+      flash("Enter token and chat ID first");
+      return;
+    }
+    // Persist current values so the test matches what's saved.
+    await store.set("telegramToken", token);
+    await store.set("telegramChatId", chat_id);
+    await store.save();
+    flash("Sending…");
+    try {
+      await invoke("telegram_test", { token, chatId: chat_id });
+      flash("Test sent ✓");
+    } catch (e) {
+      flash(`Failed: ${e}`);
+    }
   });
 });

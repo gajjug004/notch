@@ -46,6 +46,33 @@
         <span>Pause all timers</span>
       </label>
 
+      <h2 class="section">Telegram alerts</h2>
+
+      <label class="row">
+        <input id="tg-enabled" type="checkbox" />
+        <span>Send alerts to Telegram</span>
+      </label>
+
+      <label class="row">
+        <span>Bot token</span>
+        <input id="tg-token" type="password" placeholder="123456:ABC-DEF..." autocomplete="off" />
+      </label>
+
+      <label class="row">
+        <span>Chat ID</span>
+        <input id="tg-chat" type="text" placeholder="numeric id" autocomplete="off" />
+      </label>
+
+      <div class="row">
+        <button id="tg-test" type="button">Send test</button>
+      </div>
+
+      <p class="hint">
+        Create a bot with <b>@BotFather</b> to get the token. Get your numeric
+        Chat ID from <b>@userinfobot</b> (message it once). Start a chat with your
+        own bot first, or it can't message you.
+      </p>
+
       <p id="status" class="status"></p>
     </main>
   </body>

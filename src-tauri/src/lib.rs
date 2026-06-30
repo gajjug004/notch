@@ -3,6 +3,7 @@ mod schedule;
 mod settings;
 mod state;
 mod task;
+mod telegram;
 mod tick;
 mod timer;
 mod tray;
@@ -86,6 +87,7 @@ pub fn run() {
             commands::open_settings,
             commands::pause_all,
             commands::resume_all,
+            commands::telegram_test,
         ])
         // Minimize-to-tray: closing the main window hides it; settings really closes.
         .on_window_event(|window, event| {

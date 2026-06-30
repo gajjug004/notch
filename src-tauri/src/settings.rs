@@ -12,6 +12,14 @@ pub fn get_u64<R: Runtime>(app: &AppHandle<R>, key: &str, default: u64) -> u64 {
         .unwrap_or(default)
 }
 
+pub fn get_string<R: Runtime>(app: &AppHandle<R>, key: &str) -> Option<String> {
+    app.store(SETTINGS_FILE)
+        .ok()
+        .and_then(|s| s.get(key))
+        .and_then(|v| v.as_str().map(|s| s.to_string()))
+        .filter(|s| !s.trim().is_empty())
+}
+
 pub fn get_bool<R: Runtime>(app: &AppHandle<R>, key: &str, default: bool) -> bool {
     app.store(SETTINGS_FILE)
         .ok()
