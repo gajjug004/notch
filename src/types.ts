@@ -26,6 +26,8 @@ export interface Schedule {
   last_fired?: string | null;
 }
 
+export type TaskStatus = "active" | "done";
+
 export interface Task {
   id: string;
   title: string;
@@ -34,4 +36,6 @@ export interface Task {
   window: Geometry;
   timer: Timer;
   schedule: Schedule;
+  status: TaskStatus;
+  completed_at: string | null;
 }

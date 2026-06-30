@@ -133,6 +133,35 @@ window.addEventListener("DOMContentLoaded", async () => {
   saveText("telegramToken", tgTokenEl);
   saveText("telegramChatId", tgChatEl);
 
+  // Inline, non-blocking format validation for the Telegram credentials.
+  const TOKEN_RE = /^\d+:[\w-]+$/; // 123456:ABC-DEF...
+  const CHAT_RE = /^-?\d+$/; // numeric (negative for groups/channels)
+  const validate = (
+    input: HTMLInputElement,
+    hint: HTMLElement,
+    re: RegExp,
+  ): void => {
+    const v = input.value.trim();
+    if (!v) {
+      hint.textContent = "";
+      hint.className = "field-hint";
+      return;
+    }
+    const ok = re.test(v);
+    hint.textContent = ok ? "Looks valid" : "Unexpected format";
+    hint.className = `field-hint ${ok ? "ok" : "err"}`;
+  };
+  const tgTokenHint = el("tg-token-hint");
+  const tgChatHint = el("tg-chat-hint");
+  tgTokenEl.addEventListener("input", () =>
+    validate(tgTokenEl, tgTokenHint, TOKEN_RE),
+  );
+  tgChatEl.addEventListener("input", () =>
+    validate(tgChatEl, tgChatHint, CHAT_RE),
+  );
+  validate(tgTokenEl, tgTokenHint, TOKEN_RE); // reflect hydrated values
+  validate(tgChatEl, tgChatHint, CHAT_RE);
+
   tgTestEl.addEventListener("click", async () => {
     const token = tgTokenEl.value.trim();
     const chat_id = tgChatEl.value.trim();
