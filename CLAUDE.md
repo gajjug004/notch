@@ -26,6 +26,24 @@ cd src-tauri && cargo check   # backend
 
 No test suite exists. "Clean" = `cargo check` + `tsc --noEmit` pass and app launches without panics. Drag, transparency, tray clicks, timer counting need a real (non-headless) host to verify.
 
+**Notifications in dev (GNOME):** GNOME drops notification banners from any app with no installed `.desktop` entry, so timer/schedule notifications are silently suppressed under `npm run tauri dev` (the DBus call still fires; the shell ignores it). The notify app-name is the binary name `sticky-timer`, so install a matching entry once:
+
+```bash
+cat > ~/.local/share/applications/sticky-timer.desktop <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=Sticky Timer
+Exec=sticky-timer
+Icon=sticky-timer
+Terminal=false
+Categories=Utility;
+X-GNOME-UsesNotifications=true
+EOF
+update-desktop-database ~/.local/share/applications 2>/dev/null
+```
+
+The packaged `.deb` already ships `sticky-timer.desktop` (matches `productName=sticky-timer`), so installed builds show notifications without this step.
+
 Packaging: `.deb` works. AppImage config present but its bundler (`linuxdeploy`) needs FUSE — fails in sandbox, builds on a real host.
 
 ## Architecture
